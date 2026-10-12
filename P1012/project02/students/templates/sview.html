@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        table,th,td{border:1px solid black; border-collapse:collapse;}
+        th,td{width:150px; height:40px;}
+    </style>
+</head>
+<body>
+    <h1>학생상세보기</h1>
+        <label>이름</label>
+        {{stu.name}}<br>
+        <label>학과</label>
+        {{stu.major}}<br>
+        <label>나이</label>
+        {{stu.age}}<br>
+        <label>학년</label>
+        {{stu.grade}}<br>
+        <label>성별</label>
+        {{stu.gender}}<br>
+
+
+        <a href='/students/slist/'><button type='button'>리스트</button></a><br>
+        <a href='/students/supdate/{{stu.name}}/'><button type='button'>수정</button></button></a><br>
+        <a href='/students/sdelete/{{stu.name}}/'><button type='button'>삭제</button></a><br>
+        <a href='/'><button type='button'>홈으로</button></a><br>
+
+
+
+
+
+    </form>
+</body>
+</html>
