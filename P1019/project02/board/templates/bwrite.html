@@ -4,6 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel='stylesheet' href='/static/css/bwrite.css/'>
+    <script>
+        if('{{temp}}'=='1'){
+            alert('게시글이 등록되었습니다.');
+            location.href='/board/blist/';
+            
+        }else if('{{temp}}'=='0'){
+            alert('{{bno}}번 게시글을 삭제합니다.')
+            location.href='/board/blist/';
+            
+            
+        }else if('{{temp}}'=='2'){
+            alert('{{bno}}번 게시글을 수정합니다.')
+            location.href='/board/blist/';
+
+        }
+
+    </script>
     <title>뉴스 글쓰기</title>
 </head>
 
@@ -82,10 +99,11 @@
 
         <form
             class="write-form"
-            action="#"
+            action="/board/bwrite/"
             method="post"
             enctype="multipart/form-data"
         >
+        {% csrf_token %}
 
             <!-- TITLE -->
 

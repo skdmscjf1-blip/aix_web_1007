@@ -9,5 +9,6 @@ urlpatterns = [
     path('bwrite/', views.bwrite,name='bwrite'),
     path('bview/<int:bno>/', views.bview,name='bview'),
     path('bdelete/<int:bno>/', views.bdelete,name='bdelete'),
+    path('bupdate/<int:bno>/', views.bupdate,name='bupdate'),
 ]
 
