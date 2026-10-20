@@ -109,7 +109,7 @@ def blist(request) :
         page = int(request.GET.get('page',1)) #페이지가 넘어오면 그 값 , 없을때 1페이지
         p_qs = paginator.get_page(page)
 
-        context = {'list':p_qs,'page':page}
+        context = {'list':p_qs,'page':page} #id -> member
         return render(request,'blist.html',context)
 
 # 게시글 등록 
@@ -157,7 +157,7 @@ def bview(request,bno) :
     next_qs = Board.objects.filter(Q(bgroup__gt=qs.bgroup,bstep__gte=qs.bstep) |\
             Q(bgroup=qs.bgroup,bstep__lt=qs.bstep)).order_by('-bgroup','bstep').first()
     
-    #답변달기가 있는경우
+    #답변달기가 없는경우
     # pre_qs = Board.objects.filter(bno__lt=bno).order_by('-bno').first()
     # next_qs = Board.objects.filter(bno__gt=bno).order_by('bno').first()
 
