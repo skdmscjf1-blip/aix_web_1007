@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=7381ef33f35106b67a53ec9aba5649d4"></script>
+
+<title>카카오맵</title>
+<link rel='stylesheet' href='/static/css/bview.css'>
+
+</head>
+<body>
+<!-- HEADER -->
+<header>
+    <div class="top">
+    <div class="logo">
+                FOREST
+            </div>
+    <ul class="menu">
+    <li><a href="#">소개</a></li>
+    <li><a href="#">뉴스</a></li>
+    <li><a href="#">학생관리</a></li>
+    <li><a href="#">학과정보</a></li>
+    <li><a href="#">문의</a></li>
+    </ul>
+    </div>
+</header>
+<!-- VISUAL -->
+<section class="visual">
+    <div>
+        <h1>NEWS</h1>
+        <p>포레스트의 새로운 소식을 만나보세요.</p>
+    </div>
+</section>
+<!-- 차트그리기 -->
+
+<main>
+    <div class="container">
+        <input type='text' name='search_word' id='search_word' >
+        <button type='button' onclick='searchBtn()'>검색</button>
+        <br>
+        <br>
+        <!--카카오맵 지도표시-->
+        <div id="map" style="width:100%;height:350px;"></div>
+
+
+        <div>
+            <canvas id="myChart"></canvas>
+        </div>
+    </div>
+</main>
+<script>
+                                // 카카오맵 스크립트 부분
+
+
+// ============================================================
+// 1. 카카오맵 생성
+// ============================================================
+
+var mapContainer = document.getElementById('map');
+
+var mapOption = {
+
+    // 대한민국 중심
+    center: new kakao.maps.LatLng(
+        36.3,
+        127.8
+    ),
+
+    // 전국이 보이는 확대 레벨
+    level: 13
+};
+
+var map = new kakao.maps.Map(
+    mapContainer,
+    mapOption
+);
+
+
+// ============================================================
+// 2. 현재 선택된 지역을 저장하는 변수
+// ============================================================
+
+var selectedArea = null;
+
+
+// ============================================================
+// 3. 정보창
+// ============================================================
+
+var infowindow = new kakao.maps.InfoWindow({
+    removable: true
+});
+
+
+// ============================================================
+// 4. 전국 시/도 경계 데이터 가져오기
+// ============================================================
+
+fetch(
+    'https://raw.githubusercontent.com/KnellBalm/kr-admin-geojson/main/ctprvn.geojson'
+)
+
+.then(function(response){
+
+    // 받아온 데이터를 JSON으로 변경
+    return response.json();
+
+})
+
+.then(function(data){
+
+    console.log('전국 지도 데이터 : ', data);
+
+
+    // 전국 시/도를 하나씩 반복
+    data.features.forEach(function(feature){
+
+
+        // ----------------------------------------------------
+        // 지역 이름
+        // ----------------------------------------------------
+
+        var areaName =
+            feature.properties.CTP_KOR_NM;
+
+
+        console.log(
+            '지역 이름 : ',
+            areaName
+        );
+
+
+        // ----------------------------------------------------
+        // 지역 경계 좌표
+        // ----------------------------------------------------
+
+        var coordinates =
+            feature.geometry.coordinates;
+
+
+        // ----------------------------------------------------
+        // 일반 Polygon
+        // ----------------------------------------------------
+
+        if(
+            feature.geometry.type === 'Polygon'
+        ){
+
+            drawArea(
+                coordinates,
+                areaName
+            );
+
+        }
+
+
+        // ----------------------------------------------------
+        // MultiPolygon
+        // 섬 등이 있어서 여러 조각으로 나뉜 지역
+        // ----------------------------------------------------
+
+        else if(
+            feature.geometry.type === 'MultiPolygon'
+        ){
+
+            coordinates.forEach(function(coords){
+
+                drawArea(
+                    coords,
+                    areaName
+                );
+
+            });
+
+        }
+
+    });
+
+})
+
+.catch(function(error){
+
+    console.log(
+        '전국 지도 데이터 오류 : ',
+        error
+    );
+
+});
+
+
+
+// ============================================================
+// 5. 다각형을 만드는 함수
+// ============================================================
+
+function drawArea(
+    coordinates,
+    areaName
+){
+
+    // 카카오맵에서 사용할 좌표 배열
+    var path = [];
+
+
+    // ========================================================
+    // 6. GeoJSON 좌표를 카카오맵 좌표로 변경
+    // ========================================================
+
+    coordinates[0].forEach(function(coord){
+
+
+        // GeoJSON 좌표
+        //
+        // coord[0] = 경도
+        // coord[1] = 위도
+
+        var lng = coord[0];
+
+        var lat = coord[1];
+
+
+        // 카카오맵 좌표로 변경
+        path.push(
+
+            new kakao.maps.LatLng(
+                lat,
+                lng
+            )
+
+        );
+
+    });
+
+
+
+    // ========================================================
+    // 7. 다각형 생성
+    // ========================================================
+
+    var polygon =
+        new kakao.maps.Polygon({
+
+            // 지도
+            map: map,
+
+            // 경계 좌표
+            path: path,
+
+            // 선 두께
+            strokeWeight: 2,
+
+            // 선 색상
+            strokeColor: '#004c80',
+
+            // 선 투명도
+            strokeOpacity: 0.8,
+
+            // 기본 내부 색상
+            fillColor: '#ffffff',
+
+            // 기본 내부 투명도
+            fillOpacity: 0.5
+
+        });
+
+
+
+    // ========================================================
+    // 8. 마우스를 올렸을 때
+    // ========================================================
+
+    kakao.maps.event.addListener(
+
+        polygon,
+
+        'mouseover',
+
+        function(mouseEvent){
+
+
+            // 현재 선택된 지역이 아니면
+            // 연한 파란색으로 변경
+
+            if(
+                selectedArea !== polygon
+            ){
+
+                polygon.setOptions({
+
+                    fillColor: '#66c2ff',
+
+                    fillOpacity: 0.7
+
+                });
+
+            }
+
+
+            // ------------------------------------------------
+            // 마우스 위치에 지역 이름 표시
+            // ------------------------------------------------
+
+            var content =
+
+                '<div style="' +
+
+                'background:white;' +
+
+                'padding:7px 12px;' +
+
+                'border:1px solid #333;' +
+
+                'border-radius:5px;' +
+
+                'font-weight:bold;' +
+
+                'font-size:14px;' +
+
+                '">' +
+
+                areaName +
+
+                '</div>';
+
+
+            var overlay =
+                new kakao.maps.CustomOverlay({
+
+                    content: content,
+
+                    position: mouseEvent.latLng
+
+                });
+
+
+            overlay.setMap(map);
+
+
+            // polygon에 저장
+            polygon.overlay = overlay;
+
+        }
+
+    );
+
+
+
+    // ========================================================
+    // 9. 마우스를 움직일 때
+    // ========================================================
+
+    kakao.maps.event.addListener(
+
+        polygon,
+
+        'mousemove',
+
+        function(mouseEvent){
+
+
+            if(
+                polygon.overlay
+            ){
+
+                polygon.overlay.setPosition(
+                    mouseEvent.latLng
+                );
+
+            }
+
+        }
+
+    );
+
+
+
+    // ========================================================
+    // 10. 마우스를 뺐을 때
+    // ========================================================
+
+    kakao.maps.event.addListener(
+
+        polygon,
+
+        'mouseout',
+
+        function(){
+
+
+            // 선택되지 않은 지역만
+            // 다시 흰색으로 변경
+
+            if(
+                selectedArea !== polygon
+            ){
+
+                polygon.setOptions({
+
+                    fillColor: '#ffffff',
+
+                    fillOpacity: 0.5
+
+                });
+
+            }
+
+
+            // 지역 이름 제거
+            if(
+                polygon.overlay
+            ){
+
+                polygon.overlay.setMap(null);
+
+                polygon.overlay = null;
+
+            }
+
+        }
+
+    );
+
+
+
+    // ========================================================
+    // 11. 지역을 클릭했을 때
+    // ========================================================
+
+    kakao.maps.event.addListener(
+
+        polygon,
+
+        'click',
+
+        function(mouseEvent){
+
+
+            console.log(
+                '선택한 지역 : ',
+                areaName
+            );
+
+
+            // =================================================
+            // 12. 이전에 선택한 지역이 있으면
+            //     다시 흰색으로 변경
+            // =================================================
+
+            if(
+                selectedArea !== null
+            ){
+
+                selectedArea.setOptions({
+
+                    fillColor: '#ffffff',
+
+                    fillOpacity: 0.5
+
+                });
+
+            }
+
+
+
+            // =================================================
+            // 13. 클릭한 지역을 진한 파란색으로 변경
+            // =================================================
+
+            polygon.setOptions({
+
+                fillColor: '#0066ff',
+
+                fillOpacity: 0.8
+
+            });
+
+
+            // 현재 선택 지역 저장
+            selectedArea = polygon;
+
+
+
+            // =================================================
+            // 14. 클릭한 지역의 전체 범위 계산
+            // =================================================
+
+            var bounds =
+                new kakao.maps.LatLngBounds();
+
+
+            path.forEach(function(position){
+
+                bounds.extend(
+                    position
+                );
+
+            });
+
+
+
+            // =================================================
+            // 15. 클릭한 지역으로 자동 확대
+            // =================================================
+
+            map.setBounds(
+                bounds
+            );
+
+
+
+            // =================================================
+            // 16. 정보창
+            // =================================================
+
+            var infoContent =
+
+                '<div style="' +
+
+                'padding:12px 15px;' +
+
+                'min-width:120px;' +
+
+                'text-align:center;' +
+
+                '">' +
+
+                '<strong style="' +
+
+                'font-size:16px;' +
+
+                '">' +
+
+                areaName +
+
+                '</strong>' +
+
+                '</div>';
+
+
+
+            // 정보창 내용
+            infowindow.setContent(
+                infoContent
+            );
+
+
+            // 클릭한 위치
+            infowindow.setPosition(
+                mouseEvent.latLng
+            );
+
+
+            // 지도에 표시
+            infowindow.open(
+                map
+            );
+
+        }
+
+    );
+
+}
+
+
+</script>
+
+
+<!-- FOOTER -->
+<footer>
+<div class="footer-inner">
+<div class="footer-menu">
+<a href="#">회사소개</a>
+<a href="#">오시는 길</a>
+<a href="#">개인정보처리방침</a>
+<a href="#">이용약관</a>
+<a href="#">이메일무단수집거부</a>
+</div>
+<div class="footer-info">
+
+            포레스트 리조트\
+            충청북도 제천시 백운면 금봉로 365\
+            대표번호 : 043-649-6000
+
+        </div>
+</div>
+</footer>
+</body>
+</html>
