@@ -18,7 +18,11 @@
         </tr>
         {% for p in list %}
         <tr>
-            <td>{{p.id}}</td>
+            <td>
+                <a href="/player/pview/{{p.id}}">
+                    {{p.id}}
+                </a>    
+            </td>
             <td>{{p.team}}</td>
             <td>{{p.name}}</td>
             <td>{{p.number}}</td>

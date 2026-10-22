@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>선수 상세정보</title>
+</head>
+<body>
+    <h1>선수 상세정보</h1>
+    <table>
+        <tr>
+            <th>번호</th>
+            <th>{{player.id}}</th>
+        </tr>
+        <tr>
+            <th>팀</th>
+            <th>{{player.team}}</th>
+        </tr>
+        <tr>
+            <th>선수명</th>
+            <th>{{player.name}}</th>
+        </tr>
+        <tr>
+            <th>등번호</th>
+            <th>{{player.number}}</th>
+        </tr>
+        <tr>
+            <th>포지션</th>
+            <th>{{player.position}}</th>
+        </tr>
+        <tr>
+            <th>나이</th>
+            <th>{{player.age}}</th>
+        </tr>
+    </table>
+        <br>
+        <a href="/player/plist/">선수목록</a>
+</body>
+</html>

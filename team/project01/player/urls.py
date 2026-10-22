@@ -5,5 +5,6 @@ from . import views
 app_name = 'player'
 
 urlpatterns = [
-    path('plist/',views.plist,name='plist')
+    path('plist/',views.plist,name='plist'),
+    path('pview/<int:id>/',views.pview,name='pview'),
 ]
