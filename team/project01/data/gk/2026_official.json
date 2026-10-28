@@ -1,0 +1,151 @@
+{
+  "season": 2026,
+  "league_id": 1,
+  "retrieved_at": "2026-10-28T08:58:27.816137+00:00",
+  "source_url": "https://www.kleague.com/record/player.do?leagueId=1&year=2026&recordType=CLEAN",
+  "api_url": "https://www.kleague.com/record/rankSort.do",
+  "request": {
+    "year": 2026,
+    "leagueId": 1,
+    "recordType": "CLEAN"
+  },
+  "cross_checked_with": "CONCEDED",
+  "records": [
+    {
+      "official_player_id": "20130134",
+      "name": "박청효",
+      "team": "강원",
+      "games": 33,
+      "goals_conceded": 30,
+      "clean_sheets": 14
+    },
+    {
+      "official_player_id": "20200301",
+      "name": "구성윤",
+      "team": "서울",
+      "games": 33,
+      "goals_conceded": 29,
+      "clean_sheets": 13
+    },
+    {
+      "official_player_id": "20180025",
+      "name": "송범근",
+      "team": "전북",
+      "games": 32,
+      "goals_conceded": 31,
+      "clean_sheets": 13
+    },
+    {
+      "official_player_id": "20160156",
+      "name": "김동준",
+      "team": "제주",
+      "games": 33,
+      "goals_conceded": 37,
+      "clean_sheets": 11
+    },
+    {
+      "official_player_id": "20120148",
+      "name": "이창근",
+      "team": "대전",
+      "games": 32,
+      "goals_conceded": 40,
+      "clean_sheets": 8
+    },
+    {
+      "official_player_id": "20160079",
+      "name": "황인재",
+      "team": "포항",
+      "games": 21,
+      "goals_conceded": 24,
+      "clean_sheets": 8
+    },
+    {
+      "official_player_id": "20190064",
+      "name": "김동헌",
+      "team": "인천",
+      "games": 29,
+      "goals_conceded": 31,
+      "clean_sheets": 7
+    },
+    {
+      "official_player_id": "20190154",
+      "name": "백종범",
+      "team": "서울",
+      "games": 25,
+      "goals_conceded": 30,
+      "clean_sheets": 6
+    },
+    {
+      "official_player_id": "20130156",
+      "name": "조현우",
+      "team": "울산",
+      "games": 33,
+      "goals_conceded": 47,
+      "clean_sheets": 6
+    },
+    {
+      "official_player_id": "20190375",
+      "name": "김정훈",
+      "team": "안양",
+      "games": 29,
+      "goals_conceded": 43,
+      "clean_sheets": 5
+    },
+    {
+      "official_player_id": "20160010",
+      "name": "김형근",
+      "team": "부천",
+      "games": 23,
+      "goals_conceded": 36,
+      "clean_sheets": 5
+    },
+    {
+      "official_player_id": "20230139",
+      "name": "김현엽",
+      "team": "부천",
+      "games": 12,
+      "goals_conceded": 11,
+      "clean_sheets": 4
+    },
+    {
+      "official_player_id": "20140102",
+      "name": "김경민",
+      "team": "광주",
+      "games": 17,
+      "goals_conceded": 34,
+      "clean_sheets": 3
+    },
+    {
+      "official_player_id": "20240277",
+      "name": "홍성민",
+      "team": "포항",
+      "games": 12,
+      "goals_conceded": 15,
+      "clean_sheets": 3
+    },
+    {
+      "official_player_id": "20250048",
+      "name": "김동화",
+      "team": "광주",
+      "games": 12,
+      "goals_conceded": 24,
+      "clean_sheets": 2
+    },
+    {
+      "official_player_id": "20250068",
+      "name": "박만호",
+      "team": "김천",
+      "games": 5,
+      "goals_conceded": 5,
+      "clean_sheets": 2
+    },
+    {
+      "official_player_id": "20140100",
+      "name": "이태희",
+      "team": "인천",
+      "games": 5,
+      "goals_conceded": 4,
+      "clean_sheets": 1
+    }
+  ]
+}

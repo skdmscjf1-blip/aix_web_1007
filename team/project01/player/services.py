@@ -1,4 +1,7 @@
 from player.models import PlayerStats
+from player.gk_evaluation import (
+    OFFICIAL_GK_WEIGHTS, load_snapshot, match_record, official_metrics,
+)
 
 
 # =========================================================
@@ -298,6 +301,16 @@ def calculate_position_scores(
     metric_function,
     weights
 ):
+
+    stats_list = list(stats_list)
+    if metric_function is get_gk_metrics:
+        snapshot = load_snapshot()
+        records = {s.pk: match_record(s, snapshot) for s in stats_list}
+        # Use one formula for the whole GK cohort. Missing/stale data must
+        # never become a zero-conceded record or mix incompatible scores.
+        if stats_list and all(records.values()):
+            metric_function = lambda stats: official_metrics(stats, records[stats.pk])
+            weights = OFFICIAL_GK_WEIGHTS
 
     rows = []
 
@@ -2105,23 +2118,17 @@ def get_filtered_best11(
     # 8. 포지션별 순위
     #
     # 주의:
-    # 이 rankings는 포메이션용 450분 후보 순위다.
-    # 공식 BEST11/TOP10 600분 순위는 get_best11()이 담당한다.
+    # 경기장 선발은 위의 450분 후보를 유지한다.
+    # 화면 TOP10에는 같은 점수에서 600분 이상만 남긴다.
     # =====================================================
 
     rankings = {
-
-        'FW':
-            fw_ranking,
-
-        'MF':
-            mf_ranking,
-
-        'DF':
-            df_ranking,
-
-        'GK':
-            gk_ranking,
+        position: [row for row in ranking
+                   if row['stats'].minutes >= BEST11_MIN_MINUTES]
+        for position, ranking in {
+            'FW': fw_ranking, 'MF': mf_ranking,
+            'DF': df_ranking, 'GK': gk_ranking,
+        }.items()
     }
 
 

@@ -2890,6 +2890,19 @@
             포메이션 선발: 450분 이상 · 공식 순위·TOP10: 600분 이상
         </p>
 
+        <p>
+            {% if gk_evaluation.available %}
+                GK 평가: 경기당 실점 억제 40% · 무실점 경기 비율 40% · 평균평점 20%<br>
+                <a href="{{ gk_evaluation.source_url }}" target="_blank" rel="noopener noreferrer">K리그 공식 개인 기록</a>
+                · 수집: {{ gk_evaluation.retrieved_at }}<br>
+                각 지표는 리그 GK 후보의 최고값 기준으로 점수화합니다.
+                선방률은 자료 미확보로 제외하며, 육각형 그래프는 별도 보조 지표입니다.
+            {% else %}
+                GK 평가: 공식 기록 누락 또는 DB 출장 수 불일치로 임시 기준 사용
+                (평점 50% · MOM 15% · BEST11 선정 25% · 출전시간 10%)
+            {% endif %}
+        </p>
+
     </div>
 
 

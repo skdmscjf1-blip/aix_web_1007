@@ -3,12 +3,14 @@ from django.http import JsonResponse
 
 from player.models import Player, PlayerStats
 from team.models import Team
+from player.gk_evaluation import evaluation_status
 
 from player.services import (
     get_best11,
     get_player_radar,
     get_filtered_best11,
     get_formations,
+    get_formation_candidates,
 )
 
 
@@ -333,6 +335,10 @@ def best11(request):
         # -------------------------------------------------
         'formation_available':
             result['formation_available'],
+        'gk_evaluation': evaluation_status([
+            stats for stats in get_formation_candidates()
+            if (stats.player.position or '').strip().upper() == 'GK'
+        ]),
     }
 
 
