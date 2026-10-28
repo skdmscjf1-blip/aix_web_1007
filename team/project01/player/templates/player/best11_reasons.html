@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BEST11 선정 근거</title>
+
+    <style>
+        body {
+            margin: 0;
+            background: #f4f6f5;
+            color: #172b23;
+            font-family: sans-serif;
+        }
+
+        main {
+            max-width: 960px;
+            margin: 32px auto;
+            padding: 0 16px;
+        }
+
+        h1 {
+            margin-bottom: 12px;
+        }
+
+        p {
+            line-height: 1.7;
+        }
+
+        a {
+            color: #08743e;
+        }
+
+        form,
+        article,
+        .notice {
+            background: white;
+            padding: 20px;
+            border-radius: 14px;
+            margin: 20px 0;
+        }
+
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+
+        select,
+        button {
+            padding: 10px;
+            border: 1px solid #bacdc2;
+            border-radius: 6px;
+        }
+
+        button {
+            background: #08743e;
+            color: white;
+            cursor: pointer;
+        }
+
+        h2 {
+            font-size: 20px;
+        }
+
+        .score {
+            color: #08743e;
+            font-weight: bold;
+        }
+
+        .muted {
+            color: #52645b;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th,
+        td {
+            padding: 12px 8px;
+            text-align: right;
+            border-bottom: 1px solid #e4ebe7;
+        }
+
+        th:first-child,
+        td:first-child {
+            text-align: left;
+        }
+
+        th {
+            background: #f0f7f3;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+
+<body>
+<main>
+    <a href="{% url 'player:best11' %}?team={{ result.team_id|default_if_none:'' }}&amp;formation={{ result.formation }}">
+        ← BEST11 경기장
+    </a>
+
+    <h1>2026 BEST11 선정 근거</h1>
+
+    <p>
+        포메이션 선발은 450분 이상, 공식 순위·TOP10은 600분 이상입니다.<br>
+        각 기록을 같은 포지션의 리그 전체 후보 중 최고값에 비례해
+        점수화한 뒤 가중치를 적용합니다.
+    </p>
+
+    <form method="get">
+        <label for="team">구단</label>
+
+        <select name="team" id="team">
+            <option value="">전체 K리그</option>
+
+            {% for team in teams %}
+                <option
+                    value="{{ team.id }}"
+                    {% if result.team_id == team.id %}selected{% endif %}
+                >
+                    {{ team.team_name }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <label for="formation">포메이션</label>
+
+        <select name="formation" id="formation">
+            {% for name in formations %}
+                <option
+                    value="{{ name }}"
+                    {% if result.formation == name %}selected{% endif %}
+                >
+                    {{ name }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">선정 근거 보기</button>
+    </form>
+
+    {% if not result.formation_available %}
+        <div class="notice">
+            이 포메이션을 구성할 후보가 부족합니다.
+            아래는 현재 선택 가능한 선수의 점수 근거이며,
+            완성된 BEST11은 아닙니다.
+        </div>
+    {% endif %}
+
+    {% for item in players %}
+        <article>
+            <h2>
+                {{ item.position }} · {{ item.player.name }}
+                <span class="score">
+                    {{ item.score|floatformat:2 }}점
+                </span>
+            </h2>
+
+            <p class="muted">
+                {{ item.player.team.team_name }}
+                · {{ item.minutes }}분<br>
+
+                {% if item.official_eligible %}
+                    공식 순위 출전시간 기준 충족
+                {% else %}
+                    포메이션 선발 대상 · 600분 미만으로 공식 순위 제외
+                {% endif %}
+            </p>
+
+            {% if item.legacy_gk %}
+                <p>
+                    GK 공식 기록이 누락되었거나 DB와 일치하지 않아
+                    임시 평가 기준을 사용합니다.
+                </p>
+            {% elif item.position == 'GK' %}
+                <p>
+                    실점 억제 지표 = 1 ÷ (1 + 경기당 실점).
+                    값이 클수록 실점이 적습니다.
+                    선방률은 미반영이며 팀 수비의 영향도 받습니다.
+                </p>
+            {% endif %}
+
+            <p>
+                <strong>총점에 크게 반영된 항목</strong>
+            </p>
+
+            <ul>
+                {% for metric in item.strengths %}
+                    <li>
+                        {{ metric.label }}:
+                        총점에 {{ metric.points|floatformat:2 }}점 반영
+                    </li>
+                {% empty %}
+                    <li>총점에 반영된 양수 기록이 없습니다.</li>
+                {% endfor %}
+            </ul>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>평가 항목</th>
+                            <th>기록·지표 값</th>
+                            <th>최고값 대비 점수</th>
+                            <th>총점 반영</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for metric in item.metrics %}
+                            <tr>
+                                <td>{{ metric.label }}</td>
+                                <td>{{ metric.value|floatformat:3 }}</td>
+                                <td>{{ metric.normalized|floatformat:2 }}</td>
+                                <td>{{ metric.points|floatformat:2 }}점</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="muted">
+                총점은 반영 점수의 합입니다.
+                표시할 때 반올림하므로 소수점 차이가 생길 수 있습니다.<br>
+                높은 기여도는 현재 평가 공식에서의 반영량이며
+                모든 능력의 우수함을 뜻하지 않습니다.
+            </p>
+        </article>
+
+    {% empty %}
+        <div class="notice">선발할 후보가 없습니다.</div>
+    {% endfor %}
+</main>
+</body>
+</html>
