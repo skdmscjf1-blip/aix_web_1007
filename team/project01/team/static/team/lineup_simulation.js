@@ -19,6 +19,34 @@
     let revision = 0;
     let comparing = false;
     let editorSide = null;
+    let autoTimer;
+
+    function scheduleCalculation() {
+        clearTimeout(autoTimer);
+
+        autoTimer = setTimeout(() => {
+            if (
+                !pending &&
+                !comparing &&
+                sideState.home.data &&
+                sideState.away.data
+            ) {
+                if (!form.checkValidity()) {
+                    status(
+                        '경기 기준일을 허용된 범위에서 선택하세요.',
+                        true
+                    );
+
+                    byId('result-empty').textContent =
+                        '경기 기준일을 확인하면 자동으로 다시 계산합니다.';
+
+                    return;
+                }
+
+                form.requestSubmit();
+            }
+        }, 300);
+    }
 
     function el(tag, text, className) {
         const node = document.createElement(tag);
@@ -48,9 +76,17 @@
 
     function changed() {
         revision++;
+
         byId('result').hidden = true;
+        byId('result-details').hidden = true;
+        byId('result-empty').hidden = false;
+
+        byId('result-empty').textContent =
+            '설정 변경을 반영하고 있습니다…';
+
         renderVisuals();
-        status('설정이 바뀌었습니다. 변경 전후 비교하기를 눌러주세요.');
+        status('변경 사항 반영 대기 중');
+        scheduleCalculation();
     }
 
     async function request(url, options) {
@@ -60,15 +96,198 @@
         try {
             data = await response.json();
         } catch (_) {
-            throw new Error('응답을 읽지 못했습니다. 서버 상태를 확인하세요.');
+            throw new Error(
+                '응답을 읽지 못했습니다. 서버 상태를 확인하세요.'
+            );
         }
 
         if (!response.ok) {
-            throw new Error(data.error || '요청을 처리하지 못했습니다.');
+            throw new Error(
+                data.error || '요청을 처리하지 못했습니다.'
+            );
         }
 
         return data;
     }
+
+    // 후보 표시 전용 상태입니다.
+    // 선수 구성과 예측 계산에는 영향을 주지 않습니다.
+    const recordFilter = {
+        includeMissing: false,
+
+        status(player, role) {
+            const axes = player.comparison?.[role]?.axes;
+
+            const finite = value =>
+                typeof value === 'number' &&
+                Number.isFinite(value);
+
+            const count = Array.isArray(axes)
+                ? axes.filter(axis => finite(axis.raw)).length
+                : 0;
+
+            if (!Array.isArray(axes) || axes.length !== 6) {
+                return {
+                    hasData: false,
+                    kind: 'none',
+                    label: '비교 자료 미확인',
+                    lowMinutes: false,
+                };
+            }
+
+            if (!(player.minutes > 0) || count === 0) {
+                return {
+                    hasData: false,
+                    kind: 'none',
+                    label: '기록 없음',
+                    lowMinutes: false,
+                };
+            }
+
+            const referenceMissing = axes.some(
+                axis => finite(axis.raw) && !finite(axis.score)
+            );
+
+            return {
+                hasData: true,
+                kind: count < 6 || referenceMissing
+                    ? 'partial'
+                    : 'full',
+                label: count < 6
+                    ? `일부 자료 없음 (${count}/6)`
+                    : referenceMissing
+                        ? '일부 비교 불가'
+                        : '기록 있음',
+                lowMinutes: player.minutes < 600,
+            };
+        },
+
+        set(value) {
+            this.includeMissing = Boolean(value);
+
+            document.querySelectorAll(
+                'input[data-missing-records]'
+            ).forEach(input => {
+                input.checked = this.includeMissing;
+            });
+
+            document.dispatchEvent(
+                new CustomEvent('lineup:record-filter-change')
+            );
+        },
+
+        control(id) {
+            const label = el(
+                'label',
+                undefined,
+                'record-filter-toggle'
+            );
+
+            const input = el('input');
+            input.type = 'checkbox';
+            input.id = id;
+            input.dataset.missingRecords = 'true';
+            input.checked = this.includeMissing;
+
+            input.addEventListener(
+                'change',
+                () => this.set(input.checked)
+            );
+
+            label.append(
+                input,
+                el('span', '기록 없는 선수도 보기')
+            );
+
+            return label;
+        },
+    };
+
+    window.lineupRecordFilter = recordFilter;
+
+    document.addEventListener(
+        'lineup:record-filter-change',
+        () => renderVisuals()
+    );
+
+    const recordFilterStyle = el('style');
+
+    recordFilterStyle.textContent = `
+        .record-filter-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 0 0 16px;
+            padding: 12px 14px;
+            border: 1px solid #e5ebef;
+            border-radius: 10px;
+            background: #f8fafb;
+        }
+
+        .record-filter-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        .record-filter-toggle input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            min-width: 16px;
+            margin: 0;
+            padding: 0;
+            accent-color: #0b8268;
+        }
+
+        .record-filter-help {
+            font-size: 10px;
+            color: #82929e;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        .record-state {
+            display: block;
+            font-size: 9px;
+            font-weight: 500;
+            margin-top: 4px;
+            line-height: 1.5;
+            color: #3a876f;
+        }
+
+        .record-state.partial {
+            color: #a17a39;
+        }
+
+        .record-state.none {
+            color: #8796a2;
+        }
+
+        .record-candidates .record-filter-toggle {
+            margin: 10px 0 4px;
+        }
+
+        .record-filter-count {
+            font-size: 10px;
+            color: #82929e;
+            margin: 6px 0;
+        }
+
+        .record-filter-empty {
+            font-size: 11px;
+            color: #82929e;
+            line-height: 1.8;
+            padding: 10px;
+        }
+    `;
+
+    document.head.append(recordFilterStyle);
 
     // 육각형 비교 화면 파일 불러오기
     const sourceScript = document.currentScript;
@@ -146,7 +365,28 @@
             background: #ee6957;
         }
 
+        .pitch-team[data-formation="4-2-3-1"] .pitch-player {
+            width: 72px;
+        }
+
+        .pitch-team[data-formation="4-2-3-1"] .player-name {
+            max-width: 72px;
+        }
+
+        .pitch-team[data-formation="4-2-3-1"] .player-rating {
+            white-space: nowrap;
+        }
+
         @media (max-width: 600px) {
+            .pitch-team[data-formation="4-2-3-1"] .pitch-player {
+                width: 58px;
+                left: var(--mobile-lateral) !important;
+            }
+
+            .pitch-team[data-formation="4-2-3-1"] .player-name {
+                max-width: 58px;
+            }
+
             .player-portrait {
                 width: 40px;
                 height: 40px;
@@ -166,7 +406,11 @@
     document.head.append(portraitStyle);
 
     function playerPortrait(player) {
-        const portrait = el('span', undefined, 'player-portrait');
+        const portrait = el(
+            'span',
+            undefined,
+            'player-portrait'
+        );
 
         const fallback = el(
             'span',
@@ -209,7 +453,9 @@
 
     function updatePlayer(side, row, role) {
         const p = sideState[side].data.roster.find(
-            p => p.id === Number(row.querySelector('.player-select').value)
+            p => p.id === Number(
+                row.querySelector('.player-select').value
+            )
         );
 
         const meta = row.querySelector('.player-meta');
@@ -244,7 +490,9 @@
         const players = saved || data.recommended.players;
 
         if (!Array.isArray(players) || players.length !== 11) {
-            throw new Error('저장된 선수 구성이 올바르지 않습니다.');
+            throw new Error(
+                '저장된 선수 구성이 올바르지 않습니다.'
+            );
         }
 
         const parent = byId(`${side}-lineup`);
@@ -253,15 +501,29 @@
         data.roles.forEach((role, index) => {
             const item = players[index];
 
-            if (!item || !['bad', 'normal', 'good'].includes(item.condition)) {
-                throw new Error('저장된 컨디션을 확인하세요.');
+            if (
+                !item ||
+                !['bad', 'normal', 'good'].includes(item.condition)
+            ) {
+                throw new Error(
+                    '저장된 컨디션을 확인하세요.'
+                );
             }
 
             const row = el('div', undefined, 'player-row');
             row.dataset.role = role;
+
+            row.dataset.slotLabel = formationPositions(
+                byId(`${side}-formation`).value
+            )[index]?.label || role;
+
             row.append(el('span', role, 'role'));
 
-            const select = el('select', undefined, 'player-select');
+            const select = el(
+                'select',
+                undefined,
+                'player-select'
+            );
 
             select.setAttribute(
                 'aria-label',
@@ -279,10 +541,16 @@
             select.value = String(item.id);
 
             if (!select.value) {
-                throw new Error('저장된 선수가 현재 구단 명단에 없습니다.');
+                throw new Error(
+                    '저장된 선수가 현재 구단 명단에 없습니다.'
+                );
             }
 
-            const condition = el('select', undefined, 'condition-select');
+            const condition = el(
+                'select',
+                undefined,
+                'condition-select'
+            );
 
             condition.setAttribute(
                 'aria-label',
@@ -293,7 +561,9 @@
                 ['bad', '안 좋음'],
                 ['normal', '보통'],
                 ['good', '좋음'],
-            ].forEach(([key, text]) => option(condition, key, text));
+            ].forEach(([key, text]) => {
+                option(condition, key, text);
+            });
 
             condition.value = item.condition;
 
@@ -332,7 +602,10 @@
         busy();
 
         try {
-            const url = new URL(form.dataset.rosterUrl, location.origin);
+            const url = new URL(
+                form.dataset.rosterUrl,
+                location.origin
+            );
 
             url.searchParams.set(
                 'team',
@@ -350,11 +623,15 @@
 
             state.data = data;
             renderLineup(side);
+
             return true;
         } catch (error) {
             if (generation === state.generation) {
                 state.data = null;
-                byId(`${side}-lineup`).textContent = error.message;
+
+                byId(`${side}-lineup`).textContent =
+                    error.message;
+
                 status(error.message, true);
             }
 
@@ -362,12 +639,20 @@
         } finally {
             pending--;
             busy();
+
+            if (!pending) scheduleCalculation();
         }
     }
 
     function payload() {
-        if (pending || !sideState.home.data || !sideState.away.data) {
-            throw new Error('명단을 먼저 불러와주세요.');
+        if (
+            pending ||
+            !sideState.home.data ||
+            !sideState.away.data
+        ) {
+            throw new Error(
+                '명단을 먼저 불러와주세요.'
+            );
         }
 
         const result = {
@@ -377,13 +662,19 @@
         };
 
         if (result.home_team === result.away_team) {
-            throw new Error('서로 다른 두 팀을 선택하세요.');
+            throw new Error(
+                '서로 다른 두 팀을 선택하세요.'
+            );
         }
 
         for (const side of ['home', 'away']) {
             const players = rowsFor(side).map(row => ({
-                id: Number(row.querySelector('.player-select').value),
-                condition: row.querySelector('.condition-select').value,
+                id: Number(
+                    row.querySelector('.player-select').value
+                ),
+                condition: row.querySelector(
+                    '.condition-select'
+                ).value,
             }));
 
             if (
@@ -421,7 +712,11 @@
 
         rows.forEach(values => {
             const row = el('tr');
-            values.forEach(v => row.append(el('td', String(v))));
+
+            values.forEach(v => {
+                row.append(el('td', String(v)));
+            });
+
             body.append(row);
         });
 
@@ -433,32 +728,45 @@
 
     function showResult(data) {
         const root = byId('result');
+        const details = byId('result-details');
 
-        root.replaceChildren(
-            el('h2', `${data.home_name} vs ${data.away_name} · ${data.date}`)
+        details.replaceChildren(
+            el('h2', '변화의 근거')
         );
 
-        root.append(el(
-            'p',
-            '변경 전: 팀 경기 기록 예측 / 변경 후: 선수 구성·컨디션 가정을 반영한 시뮬레이션'
-        ));
+        details.hidden = false;
+        root.replaceChildren();
+
+        byId('result-title').textContent =
+            `${data.home_name} vs ${data.away_name} · 예측 결과`;
+
+        byId('result-empty').hidden = true;
 
         const cards = el('div', undefined, 'result-bars');
 
         data.probabilities.forEach(p => {
             const card = el('div', undefined, 'prob-card');
 
-            card.append(
-                el('h3', p.label),
-                el('p', `기본 ${p.before.toFixed(1)}%`)
-            );
+            card.append(el(
+                'h3',
+                p.code === 'H'
+                    ? `${data.home_name} 승`
+                    : p.code === 'A'
+                        ? `${data.away_name} 승`
+                        : '무승부'
+            ));
 
             const before = el('div', undefined, 'track');
             const bbar = el('div');
             bbar.style.width = `${p.before}%`;
             before.append(bbar);
 
-            const after = el('div', undefined, 'track after');
+            const after = el(
+                'div',
+                undefined,
+                'track after'
+            );
+
             const abar = el('div');
             abar.style.width = `${p.after}%`;
             after.append(abar);
@@ -467,7 +775,10 @@
                 before,
                 el('strong', `${p.after.toFixed(1)}%`),
                 after,
-                el('p', `${signed(p.change)}%포인트`)
+                el(
+                    'p',
+                    `기본 대비 ${signed(p.change)}%p`
+                )
             );
 
             cards.append(card);
@@ -498,11 +809,8 @@
         };
 
         root.append(
-            el('p', '기본 예측', 'stack-label'),
-            stack('before', 'stack-before'),
-            el('p', '내 설정 반영', 'stack-label'),
-            stack('after', ''),
-            cards
+            cards,
+            stack('after', '')
         );
 
         if (data.long_gap) {
@@ -513,7 +821,7 @@
             ));
         }
 
-        root.append(el(
+        details.append(el(
             'p',
             `기본 모델 평가: ${data.test_count}경기 정확도 ${data.baseline_accuracy}%. 교체·컨디션 보정은 이 평가에 포함되지 않았으며 실제 승률 효과를 검증한 값이 아닙니다.`,
             'notice'
@@ -521,15 +829,17 @@
 
         for (const side of ['home', 'away']) {
             const current = data[side];
+
             const name = side === 'home'
                 ? data.home_name
                 : data.away_name;
 
-            root.append(
-                el('h3', `${name} · 기본 4-3-3 → ${current.formation}`)
-            );
+            details.append(el(
+                'h3',
+                `${name} · 기본 4-3-3 → ${current.formation}`
+            ));
 
-            root.append(table(
+            details.append(table(
                 ['전력', '기본', '변경 후', '변화', '가정 비중'],
                 current.parts.map(p => [
                     p.label,
@@ -541,14 +851,16 @@
             ));
 
             const reasons = [...current.parts].sort(
-                (a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)
+                (a, b) =>
+                    Math.abs(b.contribution) -
+                    Math.abs(a.contribution)
             );
 
             const top = reasons.find(
                 p => Math.abs(p.change) > 0.01
             );
 
-            root.append(el(
+            details.append(el(
                 'p',
                 top
                     ? `가장 크게 반영된 전력 변화: ${top.label} ${signed(top.change)}점`
@@ -557,12 +869,12 @@
 
             const changes = el('ul');
 
-            current.changes.forEach(p => changes.append(
-                el(
+            current.changes.forEach(p => {
+                changes.append(el(
                     'li',
                     `${p.name} · ${p.role} · ${p.condition} · ${p.reason}`
-                )
-            ));
+                ));
+            });
 
             if (!current.changes.length) {
                 changes.append(
@@ -570,10 +882,10 @@
                 );
             }
 
-            root.append(changes);
+            details.append(changes);
 
             if (current.low_evidence_count) {
-                root.append(el(
+                details.append(el(
                     'p',
                     `기록이 부족하거나 보정된 선수 ${current.low_evidence_count}명. 중립값이 포함된 전력은 불확실성이 큽니다.`,
                     'muted'
@@ -581,6 +893,7 @@
             }
 
             const reference = el('details');
+
             reference.append(
                 el('summary', '비교 기준 명단 확인')
             );
@@ -592,18 +905,15 @@
                     .join(' · ')
             ));
 
-            root.append(reference);
+            details.append(reference);
         }
 
         root.hidden = false;
-        root.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-        });
     }
 
     form.addEventListener('submit', async event => {
         event.preventDefault();
+        clearTimeout(autoTimer);
 
         if (comparing) return;
 
@@ -613,46 +923,70 @@
             body = payload();
         } catch (error) {
             status(error.message, true);
+
+            byId('result-empty').textContent =
+                '팀·경기 기준일·선수 구성을 확인하세요.';
+
             return;
         }
 
         const atRevision = revision;
         comparing = true;
+
+        byId('result').setAttribute('aria-busy', 'true');
+
         busy();
         status('변경 전후를 계산하고 있습니다…');
 
         try {
-            const data = await request(form.dataset.resultUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': form.querySelector(
-                        '[name=csrfmiddlewaretoken]'
-                    ).value,
-                },
-                body: JSON.stringify(body),
-            });
+            const data = await request(
+                form.dataset.resultUrl,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': form.querySelector(
+                            '[name=csrfmiddlewaretoken]'
+                        ).value,
+                    },
+                    body: JSON.stringify(body),
+                }
+            );
 
             if (atRevision !== revision) {
-                status('계산 중 설정이 바뀌었습니다. 다시 비교해주세요.');
+                status('최신 설정으로 다시 계산합니다…');
                 return;
             }
 
             showResult(data);
-            status('비교 완료. 사용자 가정에 따른 결과입니다.');
+            status('✓ 최신 설정 반영 완료');
         } catch (error) {
             if (atRevision === revision) {
                 status(error.message, true);
+
+                byId('result-empty').hidden = false;
+
+                byId('result-empty').textContent =
+                    '계산하지 못했습니다. 설정을 확인하거나 다시 계산을 눌러주세요.';
             }
         } finally {
             comparing = false;
+
+            byId('result').setAttribute('aria-busy', 'false');
+
             busy();
+
+            if (atRevision !== revision) {
+                scheduleCalculation();
+            }
         }
     });
 
     function rowsFor(side) {
         return [
-            ...byId(`${side}-lineup`).querySelectorAll('.player-row'),
+            ...byId(`${side}-lineup`).querySelectorAll(
+                '.player-row'
+            ),
         ];
     }
 
@@ -664,7 +998,127 @@
         );
     }
 
+    function formationPositions(formation) {
+        if (formation === '4-2-3-1') {
+            return [
+                {
+                    depth: 6,
+                    lateral: 50,
+                    label: 'GK',
+                    line: 'goalkeeper',
+                },
+                {
+                    depth: 16,
+                    lateral: 12,
+                    label: 'DF',
+                    line: 'defense',
+                },
+                {
+                    depth: 16,
+                    lateral: 37,
+                    label: 'DF',
+                    line: 'defense',
+                },
+                {
+                    depth: 16,
+                    lateral: 63,
+                    label: 'DF',
+                    line: 'defense',
+                },
+                {
+                    depth: 16,
+                    lateral: 88,
+                    label: 'DF',
+                    line: 'defense',
+                },
+                {
+                    depth: 26,
+                    lateral: 32,
+                    mobileLateral: 22,
+                    label: 'MF(후방)',
+                    line: 'holding',
+                },
+                {
+                    depth: 26,
+                    lateral: 68,
+                    mobileLateral: 78,
+                    label: 'MF(후방)',
+                    line: 'holding',
+                },
+                {
+                    depth: 36,
+                    lateral: 16,
+                    label: 'MF(전방)',
+                    line: 'attacking',
+                },
+                {
+                    depth: 33,
+                    lateral: 50,
+                    label: 'MF(전방)',
+                    line: 'attacking',
+                },
+                {
+                    depth: 36,
+                    lateral: 84,
+                    label: 'MF(전방)',
+                    line: 'attacking',
+                },
+                {
+                    depth: 45,
+                    lateral: 50,
+                    label: 'FW',
+                    line: 'striker',
+                },
+            ];
+        }
+
+        const counts = [
+            1,
+            ...formation.split('-').map(Number),
+        ];
+
+        return counts.flatMap((count, line) =>
+            Array.from({length: count}, (_, spot) => ({
+                depth: 6 + line * (
+                    38 / (counts.length - 1)
+                ),
+                lateral: count === 1
+                    ? 50
+                    : 12 + spot * 76 / (count - 1),
+                line: [
+                    'goalkeeper',
+                    'defense',
+                    'midfield',
+                    'attack',
+                ][line],
+            }))
+        );
+    }
+
     function renderVisuals() {
+        if (!byId('record-filter-toolbar')) {
+            const toolbar = el(
+                'div',
+                undefined,
+                'record-filter-toolbar'
+            );
+
+            toolbar.id = 'record-filter-toolbar';
+
+            toolbar.append(
+                recordFilter.control('show-missing-records'),
+                el(
+                    'p',
+                    '기본은 기록 있는 선수 표시 · 600분 미만 기록은 주의해서 비교하세요.',
+                    'record-filter-help'
+                )
+            );
+
+            document.querySelector(
+                '.formation-controls'
+            ).after(toolbar);
+        }
+
         for (const side of ['home', 'away']) {
             const team = config.teams.find(
                 t => t.id === byId(`${side}-team`).value
@@ -679,24 +1133,20 @@
                 img.alt = `${team.name} 로고`;
 
                 img.addEventListener('error', () => {
-                    img.replaceWith(
-                        el(
-                            'span',
-                            team.name.slice(0, 1),
-                            'club-fallback'
-                        )
-                    );
+                    img.replaceWith(el(
+                        'span',
+                        team.name.slice(0, 1),
+                        'club-fallback'
+                    ));
                 }, {once: true});
 
                 identity.append(img);
             } else if (team) {
-                identity.append(
-                    el(
-                        'span',
-                        team.name.slice(0, 1),
-                        'club-fallback'
-                    )
-                );
+                identity.append(el(
+                    'span',
+                    team.name.slice(0, 1),
+                    'club-fallback'
+                ));
             }
 
             const pitch = byId(`${side}-pitch`);
@@ -705,32 +1155,41 @@
             pitch.replaceChildren();
             bench.replaceChildren();
 
+            byId(`${side}-bench-name`).textContent =
+                team?.name ||
+                (side === 'home' ? '홈팀' : '원정팀');
+
+            byId(`${side}-bench-count`).textContent = '—';
+
             if (!sideState[side].data) {
-                pitch.append(el('span', '', 'loading'));
+                pitch.append(
+                    el('span', '', 'loading')
+                );
+
+                bench.append(el(
+                    'p',
+                    '선수 명단을 불러오는 중입니다…',
+                    'bench-loading'
+                ));
+
                 continue;
             }
 
             const rows = rowsFor(side);
             const selected = new Set();
 
-            const counts = [
-                1,
-                ...byId(`${side}-formation`).value.split('-').map(Number),
-            ];
+            const formation =
+                byId(`${side}-formation`).value;
 
-            let index = 0;
+            pitch.dataset.formation = formation;
 
-            counts.forEach((count, line) => {
-                const x = 6 + line * (38 / (counts.length - 1));
-
-                for (let spot = 0; spot < count; spot++) {
-                    const slot = index++;
+            formationPositions(formation).forEach(
+                (position, slot) => {
                     const row = rows[slot];
-
-                    if (!row) continue;
+                    if (!row) return;
 
                     const p = currentPlayer(side, row);
-                    if (!p) continue;
+                    if (!p) return;
 
                     selected.add(p.id);
 
@@ -740,6 +1199,13 @@
 
                     const role = row.dataset.role;
 
+                    const pitchRole =
+                        position.line === 'holding'
+                            ? '후방'
+                            : position.line === 'attacking'
+                                ? '전방'
+                                : role;
+
                     const button = el(
                         'button',
                         undefined,
@@ -747,14 +1213,20 @@
                     );
 
                     button.type = 'button';
-                    button.style.left =
-                        `${side === 'home' ? x : 100 - x}%`;
 
-                    button.style.top = `${
-                        count === 1
-                            ? 50
-                            : 12 + spot * 76 / (count - 1)
-                    }%`;
+                    button.style.left =
+                        `${side === 'home' ? position.depth : 100 - position.depth}%`;
+
+                    button.style.top =
+                        `${position.lateral}%`;
+
+                    button.dataset.line = position.line;
+                    button.dataset.slot = String(slot);
+
+                    button.style.setProperty(
+                        '--mobile-lateral',
+                        `${position.mobileLateral ?? position.lateral}%`
+                    );
 
                     button.style.setProperty(
                         '--field-x',
@@ -774,7 +1246,7 @@
 
                     button.setAttribute(
                         'aria-label',
-                        `${side === 'home' ? '홈' : '원정'} ${role} ${p.name}, 컨디션 ${conditionLabel}. 선수 설정 열기`
+                        `${side === 'home' ? '홈' : '원정'} ${row.dataset.slotLabel || role} ${p.name}, 컨디션 ${conditionLabel}. 선수 설정 열기`
                     );
 
                     button.append(
@@ -791,7 +1263,7 @@
                     rating.append(
                         el(
                             'span',
-                            `${role} · ${p.scores[role].toFixed(1)}`
+                            `${pitchRole} · ${p.scores[role].toFixed(1)}`
                         ),
                         el(
                             'span',
@@ -806,6 +1278,23 @@
 
                     button.append(rating);
 
+                    const recommended =
+                        sideState[side].data
+                            .recommended.players[slot];
+
+                    if (
+                        recommended &&
+                        Number(recommended.id) !== p.id
+                    ) {
+                        button.append(el(
+                            'span',
+                            '교체',
+                            'pitch-change-badge'
+                        ));
+                    }
+
+                    button.dataset.condition = condition;
+
                     button.addEventListener(
                         'click',
                         () => openEditor(side, slot)
@@ -813,34 +1302,139 @@
 
                     pitch.append(button);
                 }
-            });
+            );
 
-            sideState[side].data.roster
-                .filter(p => !selected.has(p.id))
-                .forEach(p => {
-                    const button = el(
-                        'button',
-                        `${p.number || '·'} ${p.name} · ${p.position}`
+            const available =
+                sideState[side].data.roster.filter(
+                    p => !selected.has(p.id)
+                );
+
+            const visible = available.filter(
+                p =>
+                    recordFilter.includeMissing ||
+                    recordFilter.status(
+                        p,
+                        p.position
+                    ).hasData
+            );
+
+            byId(`${side}-bench-count`).textContent =
+                `${visible.length} / ${available.length}명`;
+
+            byId(`${side}-bench-count`).title =
+                `표시 ${visible.length}명 / 전체 후보 ${available.length}명`;
+
+            if (!visible.length) {
+                bench.append(el(
+                    'p',
+                    '표시할 후보가 없습니다. 기록 없는 선수도 보려면 위 옵션을 켜세요.',
+                    'record-filter-empty'
+                ));
+            }
+
+            visible.forEach(p => {
+                const button = el('button');
+                button.type = 'button';
+                button.dataset.playerId = String(p.id);
+
+                button.setAttribute(
+                    'aria-label',
+                    `${team?.name || ''} ${p.position} ${p.name}, 교체 비교 열기`
+                );
+
+                const avatar = el(
+                    'span',
+                    String(p.number || '·'),
+                    'bench-avatar'
+                );
+
+                avatar.setAttribute('aria-hidden', 'true');
+
+                if (p.photo) {
+                    const image = el('img');
+                    image.src = p.photo;
+                    image.alt = '';
+
+                    image.addEventListener(
+                        'error',
+                        () => image.remove(),
+                        {once: true}
                     );
 
-                    button.type = 'button';
+                    avatar.append(image);
+                }
 
-                    button.addEventListener('click', () => {
-                        const slot = rows.findIndex(
+                const text = el(
+                    'span',
+                    undefined,
+                    'bench-player-text'
+                );
+
+                const record = recordFilter.status(
+                    p,
+                    p.position
+                );
+
+                const statusText =
+                    record.label +
+                    (record.lowMinutes ? ' · 600분 미만' : '');
+
+                text.append(
+                    el('strong', p.name),
+                    el(
+                        'small',
+                        `${p.position} · ${p.minutes}분`
+                    ),
+                    el(
+                        'span',
+                        statusText,
+                        `record-state ${record.kind}`
+                    )
+                );
+
+                button.append(avatar, text);
+
+                button.addEventListener('click', () => {
+                    let slot = rows.findIndex(
+                        r => r.dataset.role === p.position
+                    );
+
+                    if (slot < 0) {
+                        slot = rows.findIndex(
                             r => Object.hasOwn(
                                 p.scores,
                                 r.dataset.role
                             )
                         );
+                    }
 
-                        if (slot >= 0) {
-                            openEditor(side, slot, p.id);
-                        }
-                    });
-
-                    bench.append(button);
+                    if (slot >= 0) {
+                        openEditor(side, slot, p.id);
+                    }
                 });
+
+                bench.append(button);
+            });
         }
+
+        let note = byId('formation-layout-note');
+
+        if (!note) {
+            note = el('p', undefined, 'muted');
+            note.id = 'formation-layout-note';
+
+            document.querySelector(
+                '.pitch-legend'
+            ).after(note);
+        }
+
+        note.hidden = !['home', 'away'].some(
+            side =>
+                byId(`${side}-formation`).value === '4-2-3-1'
+        );
+
+        note.textContent =
+            '4-2-3-1: 수비 4명 → 후방 중원 2명 → 전방 중원 3명 → 공격수 1명. 후방·전방은 가상 배치 구분이며 등록 포지션과 기록 계산은 MF를 사용합니다.';
 
         renderHistory();
     }
@@ -857,7 +1451,7 @@
             option(
                 select,
                 index,
-                `${row.dataset.role} · ${p.name}`
+                `${row.dataset.slotLabel || row.dataset.role} · ${p.name}`
             );
         });
 
@@ -869,7 +1463,6 @@
 
         byId('player-dialog').showModal();
 
-        // 현재 구단 명단을 육각형 비교 화면에 전달합니다.
         window.lineupComparisonContext = {
             side,
             roster: sideState[side].data.roster,
@@ -912,7 +1505,9 @@
             });
 
         const target = [...select.options].find(
-            o => o.value === String(preferred) && !o.disabled
+            o =>
+                o.value === String(preferred) &&
+                !o.disabled
         );
 
         select.value = target
@@ -931,12 +1526,20 @@
         ];
 
         const p = sideState[editorSide].data.roster.find(
-            p => p.id === Number(byId('editor-player').value)
+            p => p.id === Number(
+                byId('editor-player').value
+            )
         );
 
         byId('editor-note').textContent = p
             ? `원 포지션 ${p.position} · ${row.dataset.role} 역할 지수 ${p.scores[row.dataset.role].toFixed(1)} · 출전 ${p.minutes}분. ${p.notes[row.dataset.role] || ''}`
             : '';
+
+        document.querySelector(
+            'label[for="editor-condition"]'
+        ).textContent = p
+            ? `적용할 선수 · ${p.name}의 컨디션`
+            : '적용할 선수의 컨디션';
     }
 
     byId('editor-slot').addEventListener(
@@ -965,7 +1568,12 @@
         row.querySelector('.condition-select').value =
             byId('editor-condition').value;
 
-        updatePlayer(editorSide, row, row.dataset.role);
+        updatePlayer(
+            editorSide,
+            row,
+            row.dataset.role
+        );
+
         byId('player-dialog').close();
         changed();
     });
@@ -980,7 +1588,9 @@
             node.setAttribute(key, value);
         });
 
-        if (text !== undefined) node.textContent = text;
+        if (text !== undefined) {
+            node.textContent = text;
+        }
 
         return node;
     }
@@ -1060,8 +1670,8 @@
             });
         }
 
-        rows.forEach((r, i) => svg.append(
-            svgNode(
+        rows.forEach((r, i) => {
+            svg.append(svgNode(
                 'text',
                 {
                     x: x(i),
@@ -1069,8 +1679,8 @@
                     'text-anchor': 'middle',
                 },
                 r.date.slice(5).replace('-', '/')
-            )
-        ));
+            ));
+        });
 
         return svg;
     }
@@ -1118,12 +1728,31 @@
 
             const rows = histories[side];
             const recent = rows.slice(-5);
-            const card = el('article', undefined, 'history-card');
-            const heading = el('div', undefined, 'history-title');
-            const badges = el('div', undefined, 'form-badges');
+
+            const card = el(
+                'article',
+                undefined,
+                'history-card'
+            );
+
+            const heading = el(
+                'div',
+                undefined,
+                'history-title'
+            );
+
+            const badges = el(
+                'div',
+                undefined,
+                'form-badges'
+            );
 
             const result = r =>
-                r.gf > r.ga ? 'W' : r.gf < r.ga ? 'L' : 'D';
+                r.gf > r.ga
+                    ? 'W'
+                    : r.gf < r.ga
+                        ? 'L'
+                        : 'D';
 
             const label = {
                 W: '승',
@@ -1144,7 +1773,11 @@
                 badges.append(badge);
             });
 
-            heading.append(el('h3', name), badges);
+            heading.append(
+                el('h3', name),
+                badges
+            );
+
             card.append(heading);
 
             if (!rows.length) {
@@ -1190,17 +1823,44 @@
             const losses = rows.length - wins - draws;
             const gf = rows.reduce((a, r) => a + r.gf, 0);
             const ga = rows.reduce((a, r) => a + r.ga, 0);
-            const tiles = el('div', undefined, 'stat-tiles');
+
+            const tiles = el(
+                'div',
+                undefined,
+                'stat-tiles'
+            );
 
             [
-                [`${(wins / rows.length * 100).toFixed(1)}%`, '과거 승률'],
-                [(gf / rows.length).toFixed(2), '경기당 득점'],
-                [(ga / rows.length).toFixed(2), '경기당 실점'],
-                [`${rows.filter(r => !r.ga).length}회`, '무실점 경기'],
-                [`${rows.filter(r => !r.gf).length}회`, '무득점 경기'],
-                [`${rows.length}경기`, '통계 표본'],
+                [
+                    `${(wins / rows.length * 100).toFixed(1)}%`,
+                    '과거 승률',
+                ],
+                [
+                    (gf / rows.length).toFixed(2),
+                    '경기당 득점',
+                ],
+                [
+                    (ga / rows.length).toFixed(2),
+                    '경기당 실점',
+                ],
+                [
+                    `${rows.filter(r => !r.ga).length}회`,
+                    '무실점 경기',
+                ],
+                [
+                    `${rows.filter(r => !r.gf).length}회`,
+                    '무득점 경기',
+                ],
+                [
+                    `${rows.length}경기`,
+                    '통계 표본',
+                ],
             ].forEach(([value, text]) => {
-                const tile = el('div', undefined, 'stat-tile');
+                const tile = el(
+                    'div',
+                    undefined,
+                    'stat-tile'
+                );
 
                 tile.append(
                     el('strong', value),
@@ -1210,14 +1870,23 @@
                 tiles.append(tile);
             });
 
-            const bar = el('div', undefined, 'historic-bar');
+            const bar = el(
+                'div',
+                undefined,
+                'historic-bar'
+            );
 
             [
                 [wins, 'win'],
                 [draws, 'draw'],
                 [losses, 'loss'],
             ].forEach(([n, cls]) => {
-                const segment = el('div', undefined, cls);
+                const segment = el(
+                    'div',
+                    undefined,
+                    cls
+                );
+
                 segment.style.width =
                     `${n / rows.length * 100}%`;
 
@@ -1261,12 +1930,19 @@
                 '선택한 두 팀의 상대전적'
             );
 
-            document.querySelector('.history-panel').before(root);
+            document.querySelector(
+                '.history-panel'
+            ).before(root);
         }
 
         root.replaceChildren();
 
-        const heading = el('div', undefined, 'section-heading');
+        const heading = el(
+            'div',
+            undefined,
+            'section-heading'
+        );
+
         const title = el('div');
 
         title.append(
@@ -1293,26 +1969,35 @@
                 '상대전적을 보려면 서로 다른 두 팀을 선택하세요.',
                 'muted'
             ));
+
             return;
         }
 
-        if (!sideState.home.data || !sideState.away.data) {
+        if (
+            !sideState.home.data ||
+            !sideState.away.data
+        ) {
             root.append(el(
                 'p',
                 '상대전적을 불러오는 중입니다…',
                 'muted'
             ));
+
             return;
         }
 
         const cutoff = byId('match-date').value;
 
-        const rows = (sideState.home.data.history || [])
+        const rows = (
+            sideState.home.data.history || []
+        )
             .filter(r => (
                 r.opponent === away.name &&
                 r.date < cutoff
             ))
-            .sort((a, b) => a.date.localeCompare(b.date));
+            .sort((a, b) =>
+                a.date.localeCompare(b.date)
+            );
 
         root.append(el(
             'p',
@@ -1326,23 +2011,46 @@
                 '해당 날짜 이전에 보유한 두 팀의 맞대결 기록이 없습니다.',
                 'muted'
             ));
+
             return;
         }
 
-        const wins = rows.filter(r => r.gf > r.ga).length;
-        const draws = rows.filter(r => r.gf === r.ga).length;
-        const losses = rows.length - wins - draws;
-        const gf = rows.reduce((sum, r) => sum + r.gf, 0);
-        const ga = rows.reduce((sum, r) => sum + r.ga, 0);
+        const wins = rows.filter(
+            r => r.gf > r.ga
+        ).length;
 
-        const tiles = el('div', undefined, 'stat-tiles');
+        const draws = rows.filter(
+            r => r.gf === r.ga
+        ).length;
+
+        const losses = rows.length - wins - draws;
+
+        const gf = rows.reduce(
+            (sum, r) => sum + r.gf,
+            0
+        );
+
+        const ga = rows.reduce(
+            (sum, r) => sum + r.ga,
+            0
+        );
+
+        const tiles = el(
+            'div',
+            undefined,
+            'stat-tiles'
+        );
 
         [
             [`${wins}승`, home.name],
             [`${draws}무`, '무승부'],
             [`${losses}승`, away.name],
         ].forEach(([value, label]) => {
-            const tile = el('div', undefined, 'stat-tile');
+            const tile = el(
+                'div',
+                undefined,
+                'stat-tile'
+            );
 
             tile.append(
                 el('strong', value),
@@ -1352,7 +2060,11 @@
             tiles.append(tile);
         });
 
-        const bar = el('div', undefined, 'probability-stack');
+        const bar = el(
+            'div',
+            undefined,
+            'probability-stack'
+        );
 
         bar.setAttribute(
             'aria-label',
@@ -1364,7 +2076,12 @@
             [draws, 'D'],
             [losses, 'A'],
         ].forEach(([count, code]) => {
-            const segment = el('div', undefined, code);
+            const segment = el(
+                'div',
+                undefined,
+                code
+            );
+
             segment.style.width =
                 `${count / rows.length * 100}%`;
 
@@ -1403,7 +2120,9 @@
         if (!raw) return [];
 
         if (raw.length > 256000) {
-            throw new Error('저장된 설정 데이터가 너무 큽니다.');
+            throw new Error(
+                '저장된 설정 데이터가 너무 큽니다.'
+            );
         }
 
         const doc = JSON.parse(raw);
@@ -1413,7 +2132,9 @@
             !Array.isArray(doc.items) ||
             doc.items.length > 10
         ) {
-            throw new Error('저장된 설정 형식을 확인하세요.');
+            throw new Error(
+                '저장된 설정 형식을 확인하세요.'
+            );
         }
 
         return doc.items;
@@ -1422,6 +2143,7 @@
     function refreshPresets() {
         const select = byId('preset-list');
         select.replaceChildren();
+
         option(select, '', '설정 선택');
 
         readPresets().forEach((item, i) => {
@@ -1435,10 +2157,13 @@
             const name = byId('preset-name').value.trim();
 
             if (!name || name.length > 40) {
-                throw new Error('설정 이름을 1~40자로 입력하세요.');
+                throw new Error(
+                    '설정 이름을 1~40자로 입력하세요.'
+                );
             }
 
             const items = readPresets();
+
             const existing = items.findIndex(
                 p => p.name === name
             );
@@ -1457,13 +2182,19 @@
 
             localStorage.setItem(
                 storageKey,
-                JSON.stringify({version: 1, items})
+                JSON.stringify({
+                    version: 1,
+                    items,
+                })
             );
 
             refreshPresets();
             status('이 브라우저에 설정을 저장했습니다.');
         } catch (error) {
-            status(`저장하지 못했습니다: ${error.message}`, true);
+            status(
+                `저장하지 못했습니다: ${error.message}`,
+                true
+            );
         }
     });
 
@@ -1472,7 +2203,9 @@
             const value = byId('preset-list').value;
 
             if (value === '') {
-                throw new Error('삭제할 설정을 선택하세요.');
+                throw new Error(
+                    '삭제할 설정을 선택하세요.'
+                );
             }
 
             const items = readPresets();
@@ -1480,7 +2213,10 @@
 
             localStorage.setItem(
                 storageKey,
-                JSON.stringify({version: 1, items})
+                JSON.stringify({
+                    version: 1,
+                    items,
+                })
             );
 
             refreshPresets();
@@ -1495,7 +2231,9 @@
             const value = byId('preset-list').value;
 
             if (value === '') {
-                throw new Error('불러올 설정을 선택하세요.');
+                throw new Error(
+                    '불러올 설정을 선택하세요.'
+                );
             }
 
             const saved = readPresets()[Number(value)];
@@ -1505,7 +2243,9 @@
                 if (
                     !data[side] ||
                     !config.teams.some(
-                        t => t.id === data[`${side}_team`]
+                        t =>
+                            t.id ===
+                            data[`${side}_team`]
                     ) ||
                     !config.formations.includes(
                         data[side].formation
@@ -1534,23 +2274,31 @@
             if (!loaded.every(Boolean)) return;
 
             for (const side of ['home', 'away']) {
-                renderLineup(side, data[side].players);
+                renderLineup(
+                    side,
+                    data[side].players
+                );
             }
 
             byId('preset-name').value = saved.name;
+
             changed();
 
             status(
-                '설정을 불러왔습니다. 변경 전후 비교하기를 눌러주세요.'
+                '저장한 설정으로 자동 계산합니다…'
             );
         } catch (error) {
-            status(`불러오지 못했습니다: ${error.message}`, true);
+            status(
+                `불러오지 못했습니다: ${error.message}`,
+                true
+            );
         }
     });
 
     byId('reset').addEventListener('click', async () => {
         for (const side of ['home', 'away']) {
-            byId(`${side}-formation`).value = '4-3-3';
+            byId(`${side}-formation`).value =
+                '4-3-3';
         }
 
         await Promise.all(
@@ -1558,7 +2306,10 @@
         );
     });
 
-    for (const [index, side] of ['home', 'away'].entries()) {
+    for (const [index, side] of [
+        'home',
+        'away',
+    ].entries()) {
         config.teams.forEach(team => {
             option(
                 byId(`${side}-team`),
@@ -1575,8 +2326,11 @@
             );
         });
 
-        byId(`${side}-team`).value = config.teams[index].id;
-        byId(`${side}-formation`).value = '4-3-3';
+        byId(`${side}-team`).value =
+            config.teams[index].id;
+
+        byId(`${side}-formation`).value =
+            '4-3-3';
 
         byId(`${side}-team`).addEventListener(
             'change',
@@ -1602,6 +2356,20 @@
         'change',
         renderHistory
     );
+
+    document.addEventListener('click', event => {
+        const menu = byId('settings-menu');
+
+        if (menu && !menu.contains(event.target)) {
+            menu.open = false;
+        }
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            byId('settings-menu').open = false;
+        }
+    });
 
     try {
         refreshPresets();
