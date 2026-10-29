@@ -24,15 +24,8 @@
 
     function el(tag, text, className) {
         const node = document.createElement(tag);
-
-        if (text !== undefined) {
-            node.textContent = text;
-        }
-
-        if (className) {
-            node.className = className;
-        }
-
+        if (text !== undefined) node.textContent = text;
+        if (className) node.className = className;
         return node;
     }
 
@@ -46,10 +39,7 @@
             node.setAttribute(key, value);
         });
 
-        if (text !== undefined) {
-            node.textContent = text;
-        }
-
+        if (text !== undefined) node.textContent = text;
         return node;
     }
 
@@ -79,9 +69,7 @@
     }
 
     function player(id) {
-        return state?.roster.find(
-            p => p.id === Number(id)
-        );
+        return state?.roster.find(p => p.id === Number(id));
     }
 
     function baselinePlayer() {
@@ -369,10 +357,7 @@
 
         text.append(
             el('strong', `${p.number || '·'} ${p.name}`),
-            el(
-                'small',
-                `${p.position} · 출전 ${p.minutes}분`
-            )
+            el('small', `${p.position} · 출전 ${p.minutes}분`)
         );
 
         card.append(text);
@@ -380,8 +365,7 @@
     }
 
     function point(index, radius) {
-        const angle = -Math.PI / 2 +
-            index * Math.PI / 3;
+        const angle = -Math.PI / 2 + index * Math.PI / 3;
 
         return [
             210 + Math.cos(angle) * radius,
@@ -408,9 +392,9 @@
         ));
 
         for (const level of [20, 40, 60, 80, 100]) {
-            const points = axes.map((_, i) => {
-                return point(i, level).join(',');
-            }).join(' ');
+            const points = axes.map(
+                (_, i) => point(i, level).join(',')
+            ).join(' ');
 
             svg.append(svgNode('polygon', {
                 points,
@@ -513,20 +497,10 @@
             });
         }
 
-        draw(
-            currentAxes,
-            '#2975eb',
-            false,
-            names.current
-        );
+        draw(currentAxes, '#2975eb', false, names.current);
 
         if (names.compare) {
-            draw(
-                candidateAxes,
-                '#ee6957',
-                true,
-                names.candidate
-            );
+            draw(candidateAxes, '#ee6957', true, names.candidate);
         }
 
         return svg;
@@ -553,14 +527,12 @@
         axes.forEach((axis, i) => {
             const before = currentAxes[i]?.raw;
             const after = candidateAxes[i]?.raw;
-
             let difference = '—';
 
             if (finite(before) && finite(after)) {
                 const change = after - before;
-                difference = (
-                    `${change > 0 ? '+' : ''}${change.toFixed(2)}`
-                );
+                difference =
+                    `${change > 0 ? '+' : ''}${change.toFixed(2)}`;
             }
 
             const row = el('tr');
@@ -597,6 +569,7 @@
 
         ui.graph.replaceChildren();
         ui.values.replaceChildren();
+
         ui.people.replaceChildren(
             personCard(current, 'current'),
             personCard(candidate, 'candidate')
@@ -605,11 +578,7 @@
         const compare = current.id !== candidate.id;
 
         ui.legend.replaceChildren(
-            el(
-                'span',
-                `━ 現 선발: ${current.name}`,
-                'current'
-            )
+            el('span', `━ 현재 선발: ${current.name}`, 'current')
         );
 
         if (compare) {
@@ -641,11 +610,9 @@
                 'notice'
             ));
         } else {
-            const axes = before.axes;
-
             ui.graph.append(
                 radar(
-                    axes,
+                    before.axes,
                     before.axes,
                     after.axes,
                     {
@@ -658,7 +625,7 @@
 
             ui.values.append(
                 comparisonTable(
-                    axes,
+                    before.axes,
                     before.axes,
                     after.axes
                 )
@@ -745,20 +712,67 @@
 
         const keyword = ui.search.value.trim().toLowerCase();
 
+        function samePosition(p) {
+            return (
+                (p.position || '').trim().toUpperCase() === role
+            );
+        }
+
+        function hasRecords(p) {
+            return Boolean(
+                p.minutes > 0 &&
+                profile(p, role)?.axes?.some(
+                    axis => finite(axis.raw)
+                )
+            );
+        }
+
+        function roleScore(p) {
+            return finite(p.scores[role])
+                ? p.scores[role]
+                : 0;
+        }
+
         const eligible = state.roster
             .filter(p => (
                 Object.hasOwn(p.scores, role) &&
                 !used.has(p.id) &&
-                (
-                    `${p.name} ${p.number} ${p.position}`
-                        .toLowerCase()
-                        .includes(keyword)
-                )
+                `${p.name} ${p.number} ${p.position}`
+                    .toLowerCase()
+                    .includes(keyword)
             ))
-            .sort((a, b) => (
-                b.scores[role] - a.scores[role] ||
-                a.id - b.id
-            ));
+            .sort((a, b) => {
+                // 1. 선택한 자리와 원래 포지션이 같은 선수 우선
+                const positionOrder =
+                    Number(samePosition(b)) -
+                    Number(samePosition(a));
+
+                if (positionOrder !== 0) {
+                    return positionOrder;
+                }
+
+                // 2. 같은 그룹 안에서는 기록이 있는 선수 우선
+                const recordOrder =
+                    Number(hasRecords(b)) -
+                    Number(hasRecords(a));
+
+                if (recordOrder !== 0) {
+                    return recordOrder;
+                }
+
+                // 3. 역할 지수가 높은 순서
+                const scoreOrder = roleScore(b) - roleScore(a);
+
+                if (scoreOrder !== 0) {
+                    return scoreOrder;
+                }
+
+                // 4. 동점이면 이름, 선수 ID 순서
+                return (
+                    a.name.localeCompare(b.name, 'ko') ||
+                    a.id - b.id
+                );
+            });
 
         ui.list.replaceChildren();
 
@@ -772,6 +786,10 @@
             button.type = 'button';
             button.dataset.id = String(p.id);
 
+            const recordLabel = hasRecords(p)
+                ? `${p.minutes}분`
+                : '비교 기록 없음';
+
             button.append(
                 el(
                     'span',
@@ -782,7 +800,7 @@
                     'small',
                     `${p.position} · 역할 지수 ` +
                     `${p.scores[role].toFixed(1)} · ` +
-                    `${p.minutes}분`
+                    recordLabel
                 )
             );
 
@@ -798,7 +816,6 @@
 
             button.addEventListener('click', () => {
                 const select = byId('editor-player');
-
                 select.value = String(p.id);
 
                 select.dispatchEvent(
@@ -851,10 +868,7 @@
 
         toggle.type = 'button';
         toggle.setAttribute('aria-expanded', 'false');
-        toggle.setAttribute(
-            'aria-controls',
-            'record-candidates'
-        );
+        toggle.setAttribute('aria-controls', 'record-candidates');
 
         toolbar.append(
             el('h3', '기록 기반 비교 지수'),
@@ -871,31 +885,11 @@
             )
         );
 
-        const layout = el(
-            'div',
-            undefined,
-            'record-layout'
-        );
-
-        const main = el(
-            'div',
-            undefined,
-            'record-graph-area'
-        );
-
-        const people = el(
-            'div',
-            undefined,
-            'record-persons'
-        );
-
+        const layout = el('div', undefined, 'record-layout');
+        const main = el('div', undefined, 'record-graph-area');
+        const people = el('div', undefined, 'record-persons');
         const graph = el('div');
-
-        const legend = el(
-            'div',
-            undefined,
-            'record-legend'
-        );
+        const legend = el('div', undefined, 'record-legend');
 
         const previewLabel = el(
             'p',
@@ -903,18 +897,8 @@
             'record-preview-label'
         );
 
-        const evidence = el(
-            'p',
-            undefined,
-            'record-evidence'
-        );
-
-        const condition = el(
-            'p',
-            undefined,
-            'record-condition'
-        );
-
+        const evidence = el('p', undefined, 'record-evidence');
+        const condition = el('p', undefined, 'record-condition');
         const values = el('div');
 
         main.append(
@@ -935,11 +919,7 @@
         candidates.id = 'record-candidates';
         candidates.hidden = true;
 
-        const searchLabel = el(
-            'label',
-            '교체 후보 검색'
-        );
-
+        const searchLabel = el('label', '교체 후보 검색');
         searchLabel.htmlFor = 'record-player-search';
 
         const search = el('input');
@@ -958,6 +938,7 @@
             search,
             el(
                 'p',
+                '같은 포지션 우선 · 그룹 내 기록 보유·역할 지수순. ' +
                 '마우스·키보드 이동: 미리보기 / 클릭: 후보 선택',
                 'record-intro'
             ),
@@ -1072,7 +1053,6 @@
         dialog.classList.remove('has-record-comparison');
     });
 
-    // 연결 파일이 늦게 로드된 경우에도 열린 설정창에 표시합니다.
     if (dialog.open && window.lineupComparisonContext) {
         mount(window.lineupComparisonContext);
     }

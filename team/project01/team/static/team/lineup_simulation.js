@@ -70,6 +70,28 @@
         return data;
     }
 
+    // 육각형 비교 화면 파일 불러오기
+    const sourceScript = document.currentScript;
+
+    if (sourceScript && sourceScript.src) {
+        const comparisonScript = document.createElement('script');
+
+        comparisonScript.src = new URL(
+            'player_comparison.js',
+            sourceScript.src
+        ).href;
+
+        comparisonScript.addEventListener('error', () => {
+            status(
+                '선수 비교 화면 파일을 불러오지 못했습니다. ' +
+                '같은 폴더의 player_comparison.js 파일을 확인하세요.',
+                true
+            );
+        });
+
+        document.head.append(comparisonScript);
+    }
+
     // 선수 사진 디자인
     const portraitStyle = document.createElement('style');
 
@@ -199,7 +221,13 @@
             const image = el('img');
             image.src = p.photo;
             image.alt = p.name;
-            image.addEventListener('error', () => image.remove(), {once: true});
+
+            image.addEventListener(
+                'error',
+                () => image.remove(),
+                {once: true}
+            );
+
             meta.append(image);
         }
 
@@ -295,7 +323,9 @@
 
         state.data = null;
         byId('player-dialog').close();
-        byId(`${side}-lineup`).textContent = '선수 명단을 불러오는 중입니다…';
+
+        byId(`${side}-lineup`).textContent =
+            '선수 명단을 불러오는 중입니다…';
 
         changed();
         pending++;
@@ -304,8 +334,15 @@
         try {
             const url = new URL(form.dataset.rosterUrl, location.origin);
 
-            url.searchParams.set('team', byId(`${side}-team`).value);
-            url.searchParams.set('formation', byId(`${side}-formation`).value);
+            url.searchParams.set(
+                'team',
+                byId(`${side}-team`).value
+            );
+
+            url.searchParams.set(
+                'formation',
+                byId(`${side}-formation`).value
+            );
 
             const data = await request(url);
 
@@ -484,7 +521,9 @@
 
         for (const side of ['home', 'away']) {
             const current = data[side];
-            const name = side === 'home' ? data.home_name : data.away_name;
+            const name = side === 'home'
+                ? data.home_name
+                : data.away_name;
 
             root.append(
                 el('h3', `${name} · 기본 4-3-3 → ${current.formation}`)
@@ -505,7 +544,9 @@
                 (a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)
             );
 
-            const top = reasons.find(p => Math.abs(p.change) > 0.01);
+            const top = reasons.find(
+                p => Math.abs(p.change) > 0.01
+            );
 
             root.append(el(
                 'p',
@@ -517,11 +558,16 @@
             const changes = el('ul');
 
             current.changes.forEach(p => changes.append(
-                el('li', `${p.name} · ${p.role} · ${p.condition} · ${p.reason}`)
+                el(
+                    'li',
+                    `${p.name} · ${p.role} · ${p.condition} · ${p.reason}`
+                )
             ));
 
             if (!current.changes.length) {
-                changes.append(el('li', '선수·배치·컨디션 변경 없음'));
+                changes.append(
+                    el('li', '선수·배치·컨디션 변경 없음')
+                );
             }
 
             root.append(changes);
@@ -535,7 +581,9 @@
             }
 
             const reference = el('details');
-            reference.append(el('summary', '비교 기준 명단 확인'));
+            reference.append(
+                el('summary', '비교 기준 명단 확인')
+            );
 
             reference.append(el(
                 'p',
@@ -548,7 +596,10 @@
         }
 
         root.hidden = false;
-        root.scrollIntoView({behavior: 'smooth', block: 'start'});
+        root.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
     }
 
     form.addEventListener('submit', async event => {
@@ -590,7 +641,9 @@
             showResult(data);
             status('비교 완료. 사용자 가정에 따른 결과입니다.');
         } catch (error) {
-            if (atRevision === revision) status(error.message, true);
+            if (atRevision === revision) {
+                status(error.message, true);
+            }
         } finally {
             comparing = false;
             busy();
@@ -605,7 +658,9 @@
 
     function currentPlayer(side, row) {
         return sideState[side].data.roster.find(
-            p => p.id === Number(row.querySelector('.player-select').value)
+            p => p.id === Number(
+                row.querySelector('.player-select').value
+            )
         );
     }
 
@@ -625,14 +680,22 @@
 
                 img.addEventListener('error', () => {
                     img.replaceWith(
-                        el('span', team.name.slice(0, 1), 'club-fallback')
+                        el(
+                            'span',
+                            team.name.slice(0, 1),
+                            'club-fallback'
+                        )
                     );
                 }, {once: true});
 
                 identity.append(img);
             } else if (team) {
                 identity.append(
-                    el('span', team.name.slice(0, 1), 'club-fallback')
+                    el(
+                        'span',
+                        team.name.slice(0, 1),
+                        'club-fallback'
+                    )
                 );
             }
 
@@ -663,6 +726,7 @@
                 for (let spot = 0; spot < count; spot++) {
                     const slot = index++;
                     const row = rows[slot];
+
                     if (!row) continue;
 
                     const p = currentPlayer(side, row);
@@ -683,9 +747,13 @@
                     );
 
                     button.type = 'button';
-                    button.style.left = `${side === 'home' ? x : 100 - x}%`;
+                    button.style.left =
+                        `${side === 'home' ? x : 100 - x}%`;
+
                     button.style.top = `${
-                        count === 1 ? 50 : 12 + spot * 76 / (count - 1)
+                        count === 1
+                            ? 50
+                            : 12 + spot * 76 / (count - 1)
                     }%`;
 
                     button.style.setProperty(
@@ -721,10 +789,17 @@
                     );
 
                     rating.append(
-                        el('span', `${role} · ${p.scores[role].toFixed(1)}`),
                         el(
                             'span',
-                            {good: '↑', normal: '·', bad: '↓'}[condition],
+                            `${role} · ${p.scores[role].toFixed(1)}`
+                        ),
+                        el(
+                            'span',
+                            {
+                                good: '↑',
+                                normal: '·',
+                                bad: '↓',
+                            }[condition],
                             `condition-${condition}`
                         )
                     );
@@ -752,10 +827,15 @@
 
                     button.addEventListener('click', () => {
                         const slot = rows.findIndex(
-                            r => Object.hasOwn(p.scores, r.dataset.role)
+                            r => Object.hasOwn(
+                                p.scores,
+                                r.dataset.role
+                            )
                         );
 
-                        if (slot >= 0) openEditor(side, slot, p.id);
+                        if (slot >= 0) {
+                            openEditor(side, slot, p.id);
+                        }
                     });
 
                     bench.append(button);
@@ -773,7 +853,12 @@
 
         rowsFor(side).forEach((row, index) => {
             const p = currentPlayer(side, row);
-            option(select, index, `${row.dataset.role} · ${p.name}`);
+
+            option(
+                select,
+                index,
+                `${row.dataset.role} · ${p.name}`
+            );
         });
 
         select.value = String(slot);
@@ -783,6 +868,18 @@
             `${side === 'home' ? '홈팀' : '원정팀'} 선수 설정`;
 
         byId('player-dialog').showModal();
+
+        // 현재 구단 명단을 육각형 비교 화면에 전달합니다.
+        window.lineupComparisonContext = {
+            side,
+            roster: sideState[side].data.roster,
+        };
+
+        document.dispatchEvent(
+            new CustomEvent('lineup:editor-open', {
+                detail: window.lineupComparisonContext,
+            })
+        );
     }
 
     function fillEditor(preferred) {
@@ -800,7 +897,10 @@
         select.replaceChildren();
 
         sideState[editorSide].data.roster
-            .filter(p => Object.hasOwn(p.scores, row.dataset.role))
+            .filter(p => Object.hasOwn(
+                p.scores,
+                row.dataset.role
+            ))
             .forEach(p => {
                 option(
                     select,
@@ -889,7 +989,8 @@
         const svg = svgNode('svg', {
             viewBox: '0 0 470 210',
             role: 'img',
-            'aria-label': `${name} 최근 ${rows.length}경기 득점·실점 추이`,
+            'aria-label':
+                `${name} 최근 ${rows.length}경기 득점·실점 추이`,
             class: 'score-chart',
         });
 
@@ -915,7 +1016,11 @@
                     stroke: '#e9eef2',
                     'stroke-dasharray': '3 4',
                 }),
-                svgNode('text', {x: 16, y: y(i) + 4}, String(i))
+                svgNode(
+                    'text',
+                    {x: 16, y: y(i) + 4},
+                    String(i)
+                )
             );
         }
 
@@ -958,7 +1063,11 @@
         rows.forEach((r, i) => svg.append(
             svgNode(
                 'text',
-                {x: x(i), y: 194, 'text-anchor': 'middle'},
+                {
+                    x: x(i),
+                    y: 194,
+                    'text-anchor': 'middle',
+                },
                 r.date.slice(5).replace('-', '/')
             )
         ));
@@ -996,7 +1105,9 @@
         const maximum = Math.max(
             3,
             ...Object.values(histories).flatMap(
-                rows => rows.slice(-5).flatMap(r => [r.gf, r.ga])
+                rows => rows.slice(-5).flatMap(
+                    r => [r.gf, r.ga]
+                )
             )
         );
 
@@ -1014,7 +1125,11 @@
             const result = r =>
                 r.gf > r.ga ? 'W' : r.gf < r.ga ? 'L' : 'D';
 
-            const label = {W: '승', D: '무', L: '패'};
+            const label = {
+                W: '승',
+                D: '무',
+                L: '패',
+            };
 
             recent.forEach(r => {
                 const badge = el(
@@ -1023,7 +1138,9 @@
                     `form-badge form-${result(r)}`
                 );
 
-                badge.title = `${r.date} ${r.opponent} ${r.gf}:${r.ga}`;
+                badge.title =
+                    `${r.date} ${r.opponent} ${r.gf}:${r.ga}`;
+
                 badges.append(badge);
             });
 
@@ -1041,7 +1158,11 @@
                 continue;
             }
 
-            const legend = el('div', undefined, 'chart-legend');
+            const legend = el(
+                'div',
+                undefined,
+                'chart-legend'
+            );
 
             legend.append(
                 el('span', '● 득점', 'gf'),
@@ -1058,8 +1179,14 @@
                 )
             );
 
-            const wins = rows.filter(r => result(r) === 'W').length;
-            const draws = rows.filter(r => result(r) === 'D').length;
+            const wins = rows.filter(
+                r => result(r) === 'W'
+            ).length;
+
+            const draws = rows.filter(
+                r => result(r) === 'D'
+            ).length;
+
             const losses = rows.length - wins - draws;
             const gf = rows.reduce((a, r) => a + r.gf, 0);
             const ga = rows.reduce((a, r) => a + r.ga, 0);
@@ -1074,7 +1201,12 @@
                 [`${rows.length}경기`, '통계 표본'],
             ].forEach(([value, text]) => {
                 const tile = el('div', undefined, 'stat-tile');
-                tile.append(el('strong', value), el('small', text));
+
+                tile.append(
+                    el('strong', value),
+                    el('small', text)
+                );
+
                 tiles.append(tile);
             });
 
@@ -1086,7 +1218,9 @@
                 [losses, 'loss'],
             ].forEach(([n, cls]) => {
                 const segment = el('div', undefined, cls);
-                segment.style.width = `${n / rows.length * 100}%`;
+                segment.style.width =
+                    `${n / rows.length * 100}%`;
+
                 bar.append(segment);
             });
 
@@ -1121,7 +1255,12 @@
         if (!root) {
             root = el('section');
             root.id = 'head-to-head';
-            root.setAttribute('aria-label', '선택한 두 팀의 상대전적');
+
+            root.setAttribute(
+                'aria-label',
+                '선택한 두 팀의 상대전적'
+            );
+
             document.querySelector('.history-panel').before(root);
         }
 
@@ -1204,7 +1343,12 @@
             [`${losses}승`, away.name],
         ].forEach(([value, label]) => {
             const tile = el('div', undefined, 'stat-tile');
-            tile.append(el('strong', value), el('small', label));
+
+            tile.append(
+                el('strong', value),
+                el('small', label)
+            );
+
             tiles.append(tile);
         });
 
@@ -1221,7 +1365,9 @@
             [losses, 'A'],
         ].forEach(([count, code]) => {
             const segment = el('div', undefined, code);
-            segment.style.width = `${count / rows.length * 100}%`;
+            segment.style.width =
+                `${count / rows.length * 100}%`;
+
             bar.append(segment);
         });
 
@@ -1293,7 +1439,9 @@
             }
 
             const items = readPresets();
-            const existing = items.findIndex(p => p.name === name);
+            const existing = items.findIndex(
+                p => p.name === name
+            );
 
             if (existing < 0 && items.length >= 10) {
                 throw new Error(
@@ -1359,7 +1507,9 @@
                     !config.teams.some(
                         t => t.id === data[`${side}_team`]
                     ) ||
-                    !config.formations.includes(data[side].formation)
+                    !config.formations.includes(
+                        data[side].formation
+                    )
                 ) {
                     throw new Error(
                         '현재 지원하지 않는 팀 또는 포메이션입니다.'
@@ -1370,8 +1520,11 @@
             byId('match-date').value = data.date;
 
             for (const side of ['home', 'away']) {
-                byId(`${side}-team`).value = data[`${side}_team`];
-                byId(`${side}-formation`).value = data[side].formation;
+                byId(`${side}-team`).value =
+                    data[`${side}_team`];
+
+                byId(`${side}-formation`).value =
+                    data[side].formation;
             }
 
             const loaded = await Promise.all(
@@ -1386,7 +1539,10 @@
 
             byId('preset-name').value = saved.name;
             changed();
-            status('설정을 불러왔습니다. 변경 전후 비교하기를 눌러주세요.');
+
+            status(
+                '설정을 불러왔습니다. 변경 전후 비교하기를 눌러주세요.'
+            );
         } catch (error) {
             status(`불러오지 못했습니다: ${error.message}`, true);
         }
@@ -1397,16 +1553,26 @@
             byId(`${side}-formation`).value = '4-3-3';
         }
 
-        await Promise.all(['home', 'away'].map(loadSide));
+        await Promise.all(
+            ['home', 'away'].map(loadSide)
+        );
     });
 
     for (const [index, side] of ['home', 'away'].entries()) {
         config.teams.forEach(team => {
-            option(byId(`${side}-team`), team.id, team.name);
+            option(
+                byId(`${side}-team`),
+                team.id,
+                team.name
+            );
         });
 
         config.formations.forEach(name => {
-            option(byId(`${side}-formation`), name, name);
+            option(
+                byId(`${side}-formation`),
+                name,
+                name
+            );
         });
 
         byId(`${side}-team`).value = config.teams[index].id;
@@ -1427,14 +1593,26 @@
     byId('match-date').max = '2026-12-31';
     byId('match-date').value = config.defaultDate;
 
-    byId('match-date').addEventListener('change', changed);
-    byId('history-filter').addEventListener('change', renderHistory);
+    byId('match-date').addEventListener(
+        'change',
+        changed
+    );
+
+    byId('history-filter').addEventListener(
+        'change',
+        renderHistory
+    );
 
     try {
         refreshPresets();
     } catch (error) {
-        status(`저장 설정을 읽지 못했습니다: ${error.message}`, true);
+        status(
+            `저장 설정을 읽지 못했습니다: ${error.message}`,
+            true
+        );
     }
 
-    Promise.all(['home', 'away'].map(loadSide));
+    Promise.all(
+        ['home', 'away'].map(loadSide)
+    );
 })();
