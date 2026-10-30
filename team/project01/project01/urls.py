@@ -24,6 +24,9 @@ urlpatterns = [
     path('', include('home.urls')),
     path('player/', include('player.urls')),
     path('team/', include('team.urls')),
+    path('board/', include('team.urls')),
+    path('manager/', include('team.urls')),
+    path('soccer_game/', include('team.urls')),
 ]
 
 urlpatterns += static(
