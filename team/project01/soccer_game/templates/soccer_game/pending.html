@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>축구게임 · 감독? 내가한다!</title>
+
+  {% include 'shared/site_assets.html' %}
+
+  <style>
+    .game-intro {
+      max-width: 720px;
+      margin: 60px auto;
+      padding: 48px 28px;
+      background: #fff;
+      border: 1px solid #e1e9e4;
+      border-radius: 20px;
+      text-align: center;
+    }
+
+    .game-intro-icon {
+      font-size: 52px;
+    }
+
+    .game-intro h1 {
+      margin: 14px 0;
+      font-size: 30px;
+    }
+
+    .game-intro p {
+      color: #697b73;
+      line-height: 1.8;
+    }
+
+    .game-intro-links {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 26px;
+    }
+
+    .game-intro-links a {
+      padding: 12px 20px;
+      border-radius: 10px;
+      background: #168447;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    @media (max-width: 760px) {
+      .game-intro {
+        margin: 28px 16px;
+        padding: 32px 20px;
+      }
+    }
+  </style>
+</head>
+
+<body class="site-shell">
+  {% include 'shared/site_header.html' with active='game' %}
+
+  <main class="game-intro">
+    <div class="game-intro-icon" aria-hidden="true">
+      🎮
+    </div>
+
+    <h1>축구게임 준비 중</h1>
+
+    <p>
+      축구게임을 준비하고 있어요.<br>
+      준비가 완료되면 이곳에서 바로 플레이할 수 있습니다.
+    </p>
+
+    <div class="game-intro-links">
+      <a href="{% url 'player:best11' %}">
+        BEST11 보기
+      </a>
+
+      <a href="{% url 'team:simulate' %}">
+        승부예측 시뮬레이션
+      </a>
+    </div>
+  </main>
+</body>
+</html>
