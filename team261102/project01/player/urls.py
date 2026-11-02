@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .tracking_demo_views import tracking_demo
 
 
 app_name = 'player'
@@ -33,6 +34,11 @@ urlpatterns = [
         'info/<int:id>/',
         views.player_info,
         name='player_info'
+    ),
+    path(
+        'tracking-demo/',
+        tracking_demo,
+        name='tracking_demo',
     ),
 
 ]
