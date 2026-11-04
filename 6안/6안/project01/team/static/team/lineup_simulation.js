@@ -451,6 +451,16 @@
         return portrait;
     }
 
+    /* 화면에 보여 주는 선수 점수 = 종합 점수 (기존 역할 지수 + 추가 지표 점수) */
+    function shownScore(p, role) {
+        return p.total_scores && Number.isFinite(p.total_scores[role]) ? p.total_scores[role] : p.scores[role];
+    }
+
+    function scoreText(p, role) {
+        if (!p.total_scores || !p.detail) return `선수 점수 ${p.scores[role].toFixed(1)}`;
+        return `종합 ${shownScore(p, role).toFixed(1)} (기존 ${p.scores[role].toFixed(1)} · 추가 지표 ${p.detail.score.toFixed(1)})`;
+    }
+
     function updatePlayer(side, row, role) {
         const p = sideState[side].data.roster.find(
             p => p.id === Number(
@@ -481,7 +491,7 @@
 
         meta.append(el(
             'span',
-            `원 포지션 ${p.position} · 역할 지수 ${p.scores[role].toFixed(1)} · ${p.minutes}분${note ? ' · ' + note : ''}`
+            `원 포지션 ${p.position} · ${scoreText(p, role)} · ${p.minutes}분${note ? ' · ' + note : ''}`
         ));
     }
 
@@ -661,6 +671,16 @@
             date: byId('match-date').value,
         };
 
+        // BEST11 화면에서 넘어온 내 라인업 그대로(같은 구단·같은 11명)면 '내 BEST11'로 표시
+        if (config.best11 && result.home_team === config.best11.team) {
+            const now = rowsFor('home').map(row => Number(row.querySelector('.player-select').value)).sort((a, b) => a - b).join(',');
+            const mine = [...config.best11.players].sort((a, b) => a - b).join(',');
+            result.home_best11 = now === mine;
+            if (result.home_best11 && config.best11.settings) {
+                result.home_best11_settings = config.best11.settings;
+            }
+        }
+
         if (result.home_team === result.away_team) {
             throw new Error(
                 '서로 다른 두 팀을 선택하세요.'
@@ -726,7 +746,143 @@
         return wrap;
     }
 
-    function showResult(data) {
+    /* 승부예측 비율: 팀 기록 (100-w)% + 선수 능력치 w% */
+    function playerBlock(data) {
+        const x = data.player_part;
+        const box = el('section', undefined, 'extra-box');
+        box.append(el('h3', `승부예측 구성: 팀 기록 ${100 - x.weight}% + 선수 능력치 ${x.weight}%`));
+        box.append(el(
+            'p',
+            `팀 기록(최근 5경기·홈/원정·시즌 성적)으로 낸 확률 ${100 - x.weight}%와, 양 팀 라인업의 선수 점수(BEST11과 같은 통합 점수)만으로 낸 확률 ${x.weight}%를 합쳤습니다. 선수 능력치 확률은 리그 평균 득점에서 출발해 공격 지수 ÷ 상대 수비 지수(12개 구단 기본 선발 평균 = 기준)로 예상 득점을 정합니다.`,
+            'muted'
+        ));
+        box.append(table(
+            ['', '공격 지수', '수비 지수', '예상 득점 (리그 평균 → 선수 능력치)'],
+            [
+                [data.home_name, x.home.attack.toFixed(1), x.home.defense.toFixed(1), `${x.base_goals.home.toFixed(2)} → ${x.goals.home_goals.toFixed(2)}`],
+                [data.away_name, x.away.attack.toFixed(1), x.away.defense.toFixed(1), `${x.base_goals.away.toFixed(2)} → ${x.goals.away_goals.toFixed(2)}`],
+                ['기준 (기본 선발 평균)', x.reference.attack.toFixed(1), x.reference.defense.toFixed(1), ''],
+            ]
+        ));
+        const t = x.team_probabilities, q = x.probabilities;
+        box.append(el('p', `팀 기록만: ${data.home_name} 승 ${t.H}% · 무 ${t.D}% · ${data.away_name} 승 ${t.A}%   |   선수 능력치만: ${data.home_name} 승 ${q.H}% · 무 ${q.D}% · ${data.away_name} 승 ${q.A}%`));
+        if (data.best11_recent) {
+            const r = data.best11_recent;
+            const recent = el('div', undefined, 'best11-recent');
+            recent.append(el('b', `🏆 내 BEST11 (${r.team}) 최근 5경기 `), el('span', '가상', 'virtual-badge'));
+            const chips = el('div', undefined, 'recent-chips');
+            r.games.forEach(g => {
+                chips.append(el('span', `${g.result} ${g.score} vs ${g.opponent}`, `recent-chip r-${g.result}`));
+            });
+            recent.append(chips, el(
+                'p',
+                `경기당 ${r.points_per_game}점 → 예상 득점 ×${r.form_factor} (선수 능력치 ${x.weight}% 안에서만 반영). ${r.note}`,
+                'muted'
+            ));
+            box.append(recent);
+        }
+        box.append(el('p', `⚠ 선수 점수의 일부 컬럼은 가상 데이터입니다 (골키퍼 선방·실점·무실점·공중볼 처리, 활동량·스프린트). ${x.virtual_note}`, 'virtual-note'));
+        return box;
+    }
+
+    /* 가산점(케미) 포함 결과 — 위의 기존 결과(능력치만)와 따로 보여 준다 */
+    function bonusBlock(data) {
+        const r = data.bonus_result;
+        let main = {};
+        if (data.views) main = {...data.views.weighted.probabilities};
+        else data.probabilities.forEach(p => { main[p.code] = p.after; });
+        const box = el('section', undefined, 'weighted-box bonus-box');
+        box.append(el('h3', '➕ 가산점(케미) 포함 결과'));
+        box.append(el('p', "'가중치 포함' 결과의 선수 점수에 케미 가산점을 더한 결과입니다 (BEST11 화면과 같은 케미 계산, 기본 가중치 기준).", 'muted'));
+        const row = el('div', undefined, 'weighted-row');
+        [['H', `${data.home_name} 승`], ['D', '무승부'], ['A', `${data.away_name} 승`]].forEach(([k, label]) => {
+            const v = r.probabilities[k];
+            const d = Math.round((v - main[k]) * 10) / 10;
+            const card = el('div', undefined, 'weighted-card');
+            card.append(el('span', label), el('strong', `${v.toFixed(1)}%`), el('small', `가중치 포함 결과 대비 ${signed(d)}%p`));
+            row.append(card);
+        });
+        box.append(row);
+        box.append(el(
+            'p',
+            `팀 케미 평균: ${data.home_name} ${signed(r.team_chem.home)} · ${data.away_name} ${signed(r.team_chem.away)}  |  공격/수비 지수 (가산점 포함): ${data.home_name} ${r.home.attack.toFixed(1)}/${r.home.defense.toFixed(1)} · ${data.away_name} ${r.away.attack.toFixed(1)}/${r.away.defense.toFixed(1)} (기준 ${r.reference.attack.toFixed(1)}/${r.reference.defense.toFixed(1)})`,
+            'muted'
+        ));
+        const list = el('details', undefined, 'extra-players');
+        list.append(el('summary', '선수별 케미 가산점 보기'));
+        for (const side of ['home', 'away']) {
+            const name = side === 'home' ? data.home_name : data.away_name;
+            list.append(el('p', `${name}: ` + r.players[side].map(p => `${p.name} ${signed(p.bonus)}`).join(' · ')));
+        }
+        list.append(el('p', '케미 가산점은 패스 주고받기 데이터가 없어 역할 보완·인접 라인 연계·같은 구단으로 추정한 값입니다 (선수당 -2 ~ +5).', 'muted'));
+        box.append(list);
+        return box;
+    }
+
+    /* 내 BEST11 가중치(BEST11 화면의 감독 연구실 설정)로 평가한 확률 — 기본 확률과 나란히 */
+    function weightedBlock(data) {
+        const m = data.best11_weighted;
+        const main = {};
+        data.probabilities.forEach(p => { main[p.code] = p.after; });
+        const box = el('section', undefined, 'weighted-box');
+        box.append(el('h3', '🏆 내 BEST11 가중치 반영 확률'));
+        const row = el('div', undefined, 'weighted-row');
+        [['H', `${data.home_name} 승`], ['D', '무승부'], ['A', `${data.away_name} 승`]].forEach(([k, label]) => {
+            const v = m.probabilities[k];
+            const d = Math.round((v - main[k]) * 10) / 10;
+            const card = el('div', undefined, 'weighted-card');
+            card.append(el('span', label), el('strong', `${v.toFixed(1)}%`), el('small', `위 결과 대비 ${signed(d)}%p`));
+            row.append(card);
+        });
+        box.append(row);
+        const summary = config.best11 && config.best11.settings_summary ? config.best11.settings_summary : '';
+        box.append(el(
+            'p',
+            `BEST11 화면에서 정한 내 가중치(${summary || '기본'})로 ${data.home_name} 선수 점수를 다시 계산해 선수 능력치(${data.player_part.weight}%) 부분에 넣었습니다. ${data.home_name} 공격 지수 ${m.home.attack.toFixed(1)} · 수비 지수 ${m.home.defense.toFixed(1)} (기본 점수 대비 공격 ${signed(m.change)}). 팀 기록 부분과 원정팀은 같습니다.`,
+            'muted'
+        ));
+        return box;
+    }
+
+    /* 결과 보기 선택: 기록만 / 가중치 포함 */
+    let resultMode = 'weighted';
+    let lastResult = null;
+    try { resultMode = localStorage.getItem('kleague-sim-result-mode') || 'weighted'; } catch (e) { /* 저장 불가여도 동작 */ }
+
+    function viewData(data) {
+        // 고른 결과를 카드에 크게, 다른 결과를 비교선(이전 막대)으로 보여 준다
+        if (!data.views) return {data, compare: '기본'};
+        const mode = data.views[resultMode] ? resultMode : 'weighted';
+        const other = mode === 'record' ? 'weighted' : 'record';
+        const now = data.views[mode].probabilities, cmp = data.views[other].probabilities;
+        const probabilities = data.probabilities.map(p => ({
+            ...p, before: cmp[p.code], after: now[p.code], change: Math.round((now[p.code] - cmp[p.code]) * 10) / 10,
+        }));
+        return {data: {...data, probabilities}, compare: data.views[other].label, mode};
+    }
+
+    function modeBar(data, mode) {
+        const bar = el('div', undefined, 'result-mode');
+        ['record', 'weighted'].forEach(key => {
+            const v = data.views[key];
+            const b = el('button', `${v.label}`, key === mode ? 'on' : '');
+            b.type = 'button';
+            b.title = v.detail;
+            b.addEventListener('click', () => {
+                resultMode = key;
+                try { localStorage.setItem('kleague-sim-result-mode', key); } catch (e) { /* 무시 */ }
+                showResult(lastResult);
+            });
+            bar.append(b);
+        });
+        bar.append(el('span', data.views[mode].detail, 'muted'));
+        return bar;
+    }
+
+    function showResult(raw) {
+        lastResult = raw;
+        const picked = viewData(raw);
+        const data = picked.data;
         const root = byId('result');
         const details = byId('result-details');
 
@@ -743,6 +899,7 @@
         byId('result-empty').hidden = true;
 
         const cards = el('div', undefined, 'result-bars');
+        if (raw.views) root.append(modeBar(raw, picked.mode));
 
         data.probabilities.forEach(p => {
             const card = el('div', undefined, 'prob-card');
@@ -777,7 +934,7 @@
                 after,
                 el(
                     'p',
-                    `기본 대비 ${signed(p.change)}%p`
+                    `${picked.compare} 대비 ${signed(p.change)}%p`
                 )
             );
 
@@ -821,9 +978,19 @@
             ));
         }
 
+        if (data.bonus_result) {
+            root.append(bonusBlock(data));
+        }
+
+        // 내 BEST11 가중치 결과는 위의 '가중치 포함'에 합쳐졌다 (views.weighted)
+
+        if (data.player_part) {
+            root.append(playerBlock(data));
+        }
+
         details.append(el(
             'p',
-            `기본 모델 평가: ${data.test_count}경기 정확도 ${data.baseline_accuracy}%. 교체·컨디션 보정은 이 평가에 포함되지 않았으며 실제 승률 효과를 검증한 값이 아닙니다.`,
+            `기본 모델 평가: ${data.test_count}경기 정확도 ${data.baseline_accuracy}%. 선수 능력치 혼합·케미·컨디션·가상 최근 경기 보정은 이 평가에 포함되지 않았습니다.`,
             'notice'
         ));
 
@@ -840,20 +1007,19 @@
             ));
 
             details.append(table(
-                ['전력', '기본', '변경 후', '변화', '가정 비중'],
+                ['포지션 평균점수', '기본', '변경 후', '변화'],
                 current.parts.map(p => [
                     p.label,
                     p.before.toFixed(1),
                     p.after.toFixed(1),
                     signed(p.change),
-                    `${p.weight}%`,
                 ])
             ));
 
             const reasons = [...current.parts].sort(
                 (a, b) =>
-                    Math.abs(b.contribution) -
-                    Math.abs(a.contribution)
+                    Math.abs(b.change) -
+                    Math.abs(a.change)
             );
 
             const top = reasons.find(
@@ -863,7 +1029,7 @@
             details.append(el(
                 'p',
                 top
-                    ? `가장 크게 반영된 전력 변화: ${top.label} ${signed(top.change)}점`
+                    ? `평균점수 변화가 가장 큰 포지션: ${top.label} ${signed(top.change)}점`
                     : '기본 구성과 전력 차이가 없습니다.'
             ));
 
@@ -1263,7 +1429,7 @@
                     rating.append(
                         el(
                             'span',
-                            `${pitchRole} · ${p.scores[role].toFixed(1)}`
+                            `${pitchRole} · ${shownScore(p, role).toFixed(1)}`
                         ),
                         el(
                             'span',
@@ -1532,7 +1698,7 @@
         );
 
         byId('editor-note').textContent = p
-            ? `원 포지션 ${p.position} · ${row.dataset.role} 역할 지수 ${p.scores[row.dataset.role].toFixed(1)} · 출전 ${p.minutes}분. ${p.notes[row.dataset.role] || ''}`
+            ? `원 포지션 ${p.position} · ${row.dataset.role} ${scoreText(p, row.dataset.role)} · 출전 ${p.minutes}분. ${p.notes[row.dataset.role] || ''}`
             : '';
 
         document.querySelector(
@@ -2380,7 +2546,29 @@
         );
     }
 
-    Promise.all(
-        ['home', 'away'].map(loadSide)
-    );
+    async function startWithBest11(b11) {
+        // 홈 = 내 BEST11 구단, 원정 = 다른 구단 하나
+        byId('home-team').value = b11.team;
+        byId('home-formation').value = b11.formation;
+        if (byId('away-team').value === b11.team) {
+            byId('away-team').value = config.teams.find(t => t.id !== b11.team).id;
+        }
+        const loaded = await Promise.all(['home', 'away'].map(loadSide));
+        if (!loaded.every(Boolean)) return;
+        try {
+            renderLineup('home', b11.players.map(id => ({id, condition: 'normal'})));
+            changed();
+            status('🏆 BEST11 화면에서 고른 내 라인업으로 시작했습니다. 원정팀을 골라 보세요.');
+        } catch (error) {
+            status(`내 BEST11을 불러오지 못해 기본 명단으로 시작합니다: ${error.message}`, true);
+        }
+    }
+
+    if (config.best11 && config.teams.some(t => t.id === config.best11.team)) {
+        startWithBest11(config.best11);
+    } else {
+        Promise.all(
+            ['home', 'away'].map(loadSide)
+        );
+    }
 })();
