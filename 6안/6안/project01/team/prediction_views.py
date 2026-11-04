@@ -1,3 +1,5 @@
+from team.gps_prediction_features import build_gps_features
+from team.player_prediction_features import build_player_features
 from datetime import date, timedelta
 
 from django import forms
@@ -130,6 +132,18 @@ def predict_match(request):
                     form.cleaned_data['home'],
                     form.cleaned_data['away'],
                     form.cleaned_data['date'],
+                )
+
+                prediction = context['prediction']
+
+                context['player_features'] = build_player_features(
+                    prediction['home_name'],
+                    prediction['away_name'],
+                )
+
+                context['gps_features'] = build_gps_features(
+                    prediction['home_name'],
+                    prediction['away_name'],
                 )
 
             except PredictionUnavailable as exc:

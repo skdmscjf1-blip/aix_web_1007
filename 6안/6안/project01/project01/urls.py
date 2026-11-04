@@ -39,6 +39,7 @@ urlpatterns = [
         'soccer_game/',
         include('soccer_game.urls'),
     ),
+    path("simulation/", include("simulation.urls")),
 ]
 
 

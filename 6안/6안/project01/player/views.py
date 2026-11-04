@@ -1,3 +1,5 @@
+from player.simulation_summary import attach_simulation_summaries
+from player.simulation_records import get_player_simulation_records
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 
@@ -108,44 +110,30 @@ def plist(request):
 # 선수 상세정보
 # =========================================================
 def pview(request, id):
-
-    # -----------------------------------------------------
-    # 선수 1명
-    # -----------------------------------------------------
-    qs = get_object_or_404(Player, id=id)
-
-
-    # -----------------------------------------------------
-    # 해당 선수 시즌 기록
-    # -----------------------------------------------------
-    stats = (
-
-        PlayerStats.objects
-
-        .filter(
-            player=qs
-        )
-
-        .order_by(
-            '-season'
-        )
+    player = get_object_or_404(
+        Player,
+        id=id,
     )
 
+    stats = (
+        PlayerStats.objects
+        .filter(player=player)
+        .order_by("-season")
+    )
 
-    context = {
-
-        'player':
-            qs,
-
-        'stats':
-            stats,
-    }
-
+    simulation_records = get_player_simulation_records(
+        player_id=player.pk,
+        page_number=request.GET.get("gps_page"),
+    )
 
     return render(
         request,
-        'pview.html',
-        context
+        "pview.html",
+        {
+            "player": player,
+            "stats": stats,
+            "simulation_records": simulation_records,
+        },
     )
 
 

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'board',
     'manager',
     'soccer_game',
+    'simulation.apps.SimulationConfig',
 ]
 
 MIDDLEWARE = [
