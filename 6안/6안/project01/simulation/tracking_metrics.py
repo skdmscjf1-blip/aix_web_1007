@@ -141,7 +141,7 @@ def extract_player_tracking(document):
                 (distance, elapsed, speed)
             )
 
-        spatial = extract_spatial(document)
+    spatial = extract_spatial(document)
 
     return {
         pid: {

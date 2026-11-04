@@ -35,7 +35,7 @@ def plist(request):
     )
 
 
-    qs = Player.objects.all()
+    qs = Player.objects.select_related("team").all()
 
 
     # -----------------------------------------------------
@@ -82,8 +82,7 @@ def plist(request):
 
     context = {
 
-        'list':
-            qs,
+        'list': attach_simulation_summaries(qs),
 
         'teams':
             teams,
