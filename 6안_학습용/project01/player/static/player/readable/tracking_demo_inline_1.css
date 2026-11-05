@@ -1,0 +1,74 @@
+/* 공부 지도: learning/files/player/static/player/readable/tracking_demo_inline_1.css.md
+ * 색상·간격·배치만 담당합니다. 선택자와 규칙 순서는 유지합니다. */
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: #10251c;
+  color: #fff;
+  font-family: "Malgun Gothic", sans-serif;
+}
+
+main {
+  max-width: 1100px;
+  margin: auto;
+}
+
+h1 {
+  font-size: 26px;
+}
+
+.notice {
+  padding: 14px;
+  background: #493b16;
+  border: 1px solid #e7bd48;
+  border-radius: 10px;
+  line-height: 1.7;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 20px;
+  border-radius: 12px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+button, select {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 0;
+  font-size: 16px;
+}
+
+button {
+  cursor: pointer;
+  background: #ffce32;
+  color: #17251b;
+  font-weight: bold;
+}
+
+input[type="range"] {
+  flex: 1;
+  min-width: 160px;
+}
+
+#eventText {
+  padding: 16px;
+  background: #1d3b2d;
+  border-radius: 10px;
+  min-height: 24px;
+}
+
+.legend {
+  line-height: 1.8;
+  color: #d0dfd6;
+}

@@ -1,0 +1,453 @@
+{# 공부 지도: learning/files/home/templates/index.html.md | HTML 구조·Django 표시 값만 읽고, 읽기 쉬운 정적 코드와 역할을 구분하세요. #}{% load static %}
+{% get_media_prefix as media_prefix %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>감독? 내가한다! - K리그 BEST11 · 승부예측</title>
+
+<link rel="stylesheet" href="{% static 'home/readable/index_inline_1.css' %}">
+{% include 'shared/site_assets.html' %}
+</head>
+
+<body class="site-shell">
+{% include 'shared/site_header.html' with active='home' %}
+
+<!-- 상단 메뉴 -->
+
+
+<!-- 메인 소개 -->
+<section class="hero">
+  <svg
+    class="lines"
+    viewBox="0 0 1200 600"
+    preserveAspectRatio="xMidYMid slice"
+    fill="none"
+    stroke="#fff"
+    stroke-width="3"
+    aria-hidden="true"
+  >
+    <rect x="40" y="40" width="1120" height="520"/>
+    <line x1="600" y1="40" x2="600" y2="560"/>
+    <circle cx="600" cy="300" r="90"/>
+    <circle cx="600" cy="300" r="5" fill="#fff"/>
+    <rect x="40" y="160" width="170" height="280"/>
+    <rect x="40" y="230" width="70" height="140"/>
+    <rect x="990" y="160" width="170" height="280"/>
+    <rect x="1090" y="230" width="70" height="140"/>
+  </svg>
+
+  <div class="in">
+    <div>
+      <span class="tag">⚽ 2026 K LEAGUE 1</span>
+
+      <h1>감독? <em>내가</em><br>한다!</h1>
+
+      <p class="lead">
+        K리그1 12개 구단의 기록으로 나만의 베스트 11을 확인해 보세요.
+        두 팀의 선수를 교체하고 컨디션을 바꾸며 승무패 확률도 비교할 수 있습니다.
+      </p>
+
+      <div class="btns">
+        <a class="btn gold" href="{% url 'player:best11' %}">
+          🏆 BEST11 보러가기
+        </a>
+
+        <a
+          class="btn predict-hero"
+          href="{% url 'team:simulate' %}"
+        >
+          ⚽ 승부예측 시뮬레이션
+          <span aria-hidden="true">→</span>
+        </a>
+
+        <a class="btn line" href="{% url 'player:plist' %}">
+          선수 찾아보기
+        </a>
+      </div>
+
+      <div class="stats">
+        <div>
+          <b>12</b>
+          <span>K리그1 구단</span>
+        </div>
+
+        <div>
+          <b>6</b>
+          <span>포메이션</span>
+        </div>
+
+        <div>
+          <b>4</b>
+          <span>포지션별 점수 기준</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 미니 경기장 -->
+    <div class="pitch-wrap">
+      <svg
+        class="pitch"
+        viewBox="0 0 300 400"
+        role="img"
+        aria-label="4-3-3 포메이션 미리보기"
+      >
+        <defs>
+          <pattern
+            id="gr"
+            width="300"
+            height="50"
+            patternUnits="userSpaceOnUse"
+          >
+            <rect width="300" height="25" fill="#2f8f4e"/>
+            <rect y="25" width="300" height="25" fill="#2a8447"/>
+          </pattern>
+        </defs>
+
+        <rect width="300" height="400" fill="url(#gr)"/>
+
+        <g
+          fill="none"
+          stroke="#fff"
+          stroke-width="2"
+          opacity=".85"
+        >
+          <rect x="14" y="14" width="272" height="372"/>
+          <line x1="14" y1="200" x2="286" y2="200"/>
+          <circle cx="150" cy="200" r="38"/>
+          <rect x="70" y="14" width="160" height="62"/>
+          <rect x="108" y="14" width="84" height="26"/>
+          <rect x="70" y="324" width="160" height="62"/>
+          <rect x="108" y="360" width="84" height="26"/>
+        </g>
+
+        <g class="dot-g">
+          <circle class="dot" cx="68" cy="88" r="15"/>
+          <text x="68" y="92">FW</text>
+
+          <circle class="dot" cx="150" cy="70" r="15"/>
+          <text x="150" y="74">FW</text>
+
+          <circle class="dot" cx="232" cy="88" r="15"/>
+          <text x="232" y="92">FW</text>
+
+          <circle class="dot" cx="76" cy="168" r="15"/>
+          <text x="76" y="172">MF</text>
+
+          <circle class="dot" cx="150" cy="190" r="15"/>
+          <text x="150" y="194">MF</text>
+
+          <circle class="dot" cx="224" cy="168" r="15"/>
+          <text x="224" y="172">MF</text>
+
+          <circle class="dot" cx="42" cy="272" r="15"/>
+          <text x="42" y="276">DF</text>
+
+          <circle class="dot" cx="112" cy="285" r="15"/>
+          <text x="112" y="289">DF</text>
+
+          <circle class="dot" cx="188" cy="285" r="15"/>
+          <text x="188" y="289">DF</text>
+
+          <circle class="dot" cx="258" cy="272" r="15"/>
+          <text x="258" y="276">DF</text>
+
+          <circle class="dot gk" cx="150" cy="352" r="15"/>
+          <text x="150" y="356" style="fill:#fff">GK</text>
+        </g>
+      </svg>
+
+      <span class="form-tag">4-3-3</span>
+
+      <svg
+        class="ball"
+        viewBox="0 0 100 100"
+        aria-hidden="true"
+      >
+        <circle
+          cx="50"
+          cy="50"
+          r="46"
+          fill="#fff"
+          stroke="#1d2a24"
+          stroke-width="3"
+        />
+        <path
+          d="M50 28l18 13-7 21H39l-7-21z"
+          fill="#1d2a24"
+        />
+        <path
+          d="M50 28V6M68 41l22-8M61 62l13 20M39 62L26 82M32 41L10 33"
+          stroke="#1d2a24"
+          stroke-width="4"
+          fill="none"
+          stroke-linecap="round"
+        />
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 서비스 소개 -->
+<section class="s" id="features">
+  <h2>이런 걸 할 수 있어요</h2>
+  <p class="sub">
+    기록에 기반한 점수로, 근거 있는 라인업을 만들어 보세요.
+  </p>
+
+  <div class="grid">
+    <a class="card" href="{% url 'player:best11' %}">
+      <div class="ico">🏆</div>
+      <h3>BEST11</h3>
+      <p>
+        포지션별 점수가 높은 선수로 구성한
+        리그 전체 베스트 11을 확인합니다.
+      </p>
+    </a>
+
+    <a class="card" href="{% url 'team:simulate' %}">
+      <div class="ico">⚽</div>
+      <h3>승부예측 시뮬레이션</h3>
+      <p>
+        홈·원정 팀과 포메이션을 고르고,
+        선수 교체·컨디션 변경에 따른 승무패 확률을 비교합니다.
+      </p>
+    </a>
+
+    <a class="card" href="{% url 'player:best11' %}">
+      <div class="ico">🛡️</div>
+      <h3>구단별 BEST11</h3>
+      <p>
+        관심 있는 구단을 골라
+        그 팀 안에서의 최고 라인업을 만듭니다.
+      </p>
+    </a>
+
+    <a class="card" href="{% url 'player:plist' %}">
+      <div class="ico">📊</div>
+      <h3>선수 기록 · 육각형</h3>
+      <p>
+        선수별 시즌 기록과 포지션별
+        육각형 능력치를 한눈에 봅니다.
+      </p>
+    </a>
+  </div>
+</section>
+
+<!-- 자유게시판 -->
+<section class="s" id="board">
+  <div class="boardbox">
+    <div class="bico">💬</div>
+
+    <div class="btxt">
+      <h2>자유게시판</h2>
+      <p>
+        경기 이야기, 내 베스트 11 자랑, 다음 경기 스코어 예측까지.
+        회원이 되어 다른 팬들과 함께 이야기해 보세요.
+        <br>
+        <small>
+          로그인한 회원만 이용할 수 있고,
+          가입은 아이디·별명·비밀번호만 있으면 됩니다.
+        </small>
+      </p>
+    </div>
+
+    <div class="bbtn">
+      <a class="btn green" href="{% url 'board:list' %}">
+        게시판 가기
+      </a>
+
+      <a class="btn ghost" href="{% url 'board:signup' %}">
+        회원가입
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- 이용 방법 -->
+<section class="s" id="how">
+  <h2>이용 방법</h2>
+  <p class="sub">세 단계면 충분합니다.</p>
+
+  <div class="steps">
+    <div class="step">
+      <h3>구단과 포메이션 선택</h3>
+      <p>
+        전체 K리그 또는 한 구단,
+        그리고 원하는 포메이션을 고릅니다.
+      </p>
+    </div>
+
+    <div class="step">
+      <h3>라인업 확인</h3>
+      <p>
+        경기장 위에 선수들이 배치되고,
+        포지션별 순위도 함께 볼 수 있습니다.
+      </p>
+    </div>
+
+    <div class="step">
+      <h3>선수 상세 보기</h3>
+      <p>
+        선수를 눌러 사진, 기록,
+        육각형 그래프로 강점을 확인합니다.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 포메이션 -->
+<section class="s">
+  <h2>지원 포메이션</h2>
+  <p class="sub">눌러서 바로 확인해 보세요.</p>
+
+  <div class="chips">
+    <a class="chip" href="{% url 'player:best11' %}?formation=4-3-3">
+      4-3-3
+    </a>
+    <a class="chip" href="{% url 'player:best11' %}?formation=4-4-2">
+      4-4-2
+    </a>
+    <a class="chip" href="{% url 'player:best11' %}?formation=4-2-3-1">
+      4-2-3-1
+    </a>
+    <a class="chip" href="{% url 'player:best11' %}?formation=3-4-3">
+      3-4-3
+    </a>
+    <a class="chip" href="{% url 'player:best11' %}?formation=3-5-2">
+      3-5-2
+    </a>
+    <a class="chip" href="{% url 'player:best11' %}?formation=5-3-2">
+      5-3-2
+    </a>
+  </div>
+</section>
+
+<!-- 구단 -->
+<section class="s">
+  <h2>K리그1 12개 구단</h2>
+  <p class="sub">2026 시즌 참가 구단</p>
+
+  <div class="teams">
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/서울.png"
+             alt="" onerror="this.outerHTML='<div class=ph>서울</div>'">
+      </div>
+      FC서울
+    </div>
+
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/강원.png"
+             alt="" onerror="this.outerHTML='<div class=ph>강원</div>'">
+      </div>
+      강원FC
+    </div>
+
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/광주.png"
+             alt="" onerror="this.outerHTML='<div class=ph>광주</div>'">
+      </div>
+      광주FC
+    </div>
+
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/김천.png"
+             alt="" onerror="this.outerHTML='<div class=ph>김천</div>'">
+      </div>
+      김천상무
+    </div>
+
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/대전.png"
+             alt="" onerror="this.outerHTML='<div class=ph>대전</div>'">
+      </div>
+      대전하나시티즌
+    </div>
+
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/부천.png"
+             alt="" onerror="this.outerHTML='<div class=ph>부천</div>'">
+      </div>
+      부천FC1995
+    </div>
+
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/안양.png"
+             alt="" onerror="this.outerHTML='<div class=ph>안양</div>'">
+      </div>
+      FC안양
+    </div>
+
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/울산.png"
+             alt="" onerror="this.outerHTML='<div class=ph>울산</div>'">
+      </div>
+      울산HD
+    </div>
+
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/인천.png"
+             alt="" onerror="this.outerHTML='<div class=ph>인천</div>'">
+      </div>
+      인천유나이티드
+    </div>
+
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/전북.png"
+             alt="" onerror="this.outerHTML='<div class=ph>전북</div>'">
+      </div>
+      전북현대
+    </div>
+
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/제주.png"
+             alt="" onerror="this.outerHTML='<div class=ph>제주</div>'">
+      </div>
+      제주SK FC
+    </div>
+
+    <div class="team">
+      <div class="lg">
+        <img src="{{ media_prefix }}team_logos/포항.png"
+             alt="" onerror="this.outerHTML='<div class=ph>포항</div>'">
+      </div>
+      포항스틸러스
+    </div>
+  </div>
+</section>
+
+<!-- 하단 배너 -->
+<div class="banner">
+  <div class="box">
+    <div>
+      <h2>지금 내 베스트 11을 만들어 볼까요?</h2>
+      <p>
+        기록으로 증명하는 최고의 라인업,
+        감독은 바로 당신입니다.
+      </p>
+    </div>
+
+    <a class="btn gold" href="{% url 'player:best11' %}">
+      BEST11 시작하기 →
+    </a>
+  </div>
+</div>
+
+<footer>
+  <b>감독? 내가한다!</b> · K리그 데이터 분석 팀 프로젝트
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,35 @@
+/* 공부 지도: learning/files/manager/static/manager/readable/upload_inline_1.css.md
+ * 색상·간격·배치만 담당합니다. 선택자와 규칙 순서는 유지합니다. */
+
+#drop {
+  border: 2px dashed var(--bd);
+  border-radius: 10px;
+  padding: 28px;
+  text-align: center;
+  background: var(--bg);
+  margin: 12px 0;
+}
+#drop.over {
+  border-color: #1f6feb;
+  background: #eaf2ff;
+}
+#list {
+  max-height: 220px;
+  overflow: auto;
+  font-size: 13px;
+  margin: 8px 0;
+}
+#list div {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--bd);
+  padding: 2px 4px;
+}
+.linkbtn {
+  background: none;
+  color: #1f6feb;
+  padding: 0 4px;
+  border: 0;
+  cursor: pointer;
+  font-size: 14px;
+}

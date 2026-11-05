@@ -1,0 +1,1317 @@
+{# 공부 지도: learning/files/player/templates/player/best11.html.md | HTML 구조·Django 표시 값만 읽고, 읽기 쉬운 정적 코드와 역할을 구분하세요. #}{% load static %}<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>2026 K리그 BEST11</title>
+
+    <!-- 육각형 그래프 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet" href="{% static 'player/readable/best11_inline_1.css' %}">
+
+{% include 'shared/site_assets.html' %}
+</head>
+
+
+<body class="site-shell">
+{% include 'shared/site_header.html' with active='best11' %}
+
+
+<div class="container">
+
+
+    <!-- =====================================================
+         제목
+    ====================================================== -->
+
+    <div class="title">
+
+        <h1>
+            2026 K리그 BEST11
+        </h1>
+
+        <p>
+            포메이션 선발: 450분 이상 · 공식 순위·TOP10: 600분 이상
+        </p>
+
+    </div>
+
+
+
+
+    <!-- =====================================================
+         구단 / 포메이션 선택
+    ====================================================== -->
+
+    <div class="best11-workspace">
+
+    <aside class="best11-sidebar">
+
+        <div class="sidebar-team">
+
+            {% if selected_team and selected_team.logo %}
+                <img
+                    src="{{ selected_team.logo.url }}"
+                    alt="{{ selected_team.team_name }}"
+                    class="sidebar-team-logo"
+                >
+            {% else %}
+                <div class="sidebar-league-logo">K</div>
+            {% endif %}
+
+            <div class="sidebar-team-title">
+                {% if selected_team %}
+                    {{ selected_team.team_name }}
+                {% else %}
+                    전체 K리그
+                {% endif %}
+            </div>
+
+            <div class="sidebar-team-subtitle">
+                BEST11
+            </div>
+
+        </div>
+
+
+        <form
+            method="get"
+            action="{% url 'player:best11' %}"
+            class="sidebar-filter"
+            id="best11FilterForm"
+        >
+
+            <div class="sidebar-field">
+
+                <label for="teamSelect">구단</label>
+
+                <select name="team" id="teamSelect">
+
+                    <option value="">전체 K리그</option>
+
+                    {% for team in teams %}
+                        <option
+                            value="{{ team.id }}"
+                            {% if team_id == team.id %}selected{% endif %}
+                        >
+                            {{ team.team_name }}
+                        </option>
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <div class="sidebar-field">
+
+                <label for="formationSelect">포메이션</label>
+
+                <select name="formation" id="formationSelect">
+
+                    {% for formation_name, formation_data in formations.items %}
+                        <option
+                            value="{{ formation_name }}"
+                            {% if formation == formation_name %}selected{% endif %}
+                        >
+                            {{ formation_name }}
+                        </option>
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <button type="submit" class="sidebar-apply-btn">
+                적용
+            </button>
+
+        </form>
+
+
+        <div class="sidebar-divider"></div>
+
+
+        <div class="sidebar-summary">
+
+            <div class="summary-title">
+                2026 시즌
+            </div>
+
+            <div class="summary-note">
+                포메이션 후보: 출전시간 450분 이상
+            </div>
+
+            <div class="summary-total">
+                <span>전체 후보</span>
+                <strong>{{ candidate_count }}명</strong>
+            </div>
+
+            <div class="summary-grid">
+
+                <div>
+                    <span>GK</span>
+                    <strong>{{ position_count.GK }}</strong>
+                </div>
+
+                <div>
+                    <span>DF</span>
+                    <strong>{{ position_count.DF }}</strong>
+                </div>
+
+                <div>
+                    <span>MF</span>
+                    <strong>{{ position_count.MF }}</strong>
+                </div>
+
+                <div>
+                    <span>FW</span>
+                    <strong>{{ position_count.FW }}</strong>
+                </div>
+
+            </div>
+
+            <div class="summary-selected">
+                {% if formation_available %}
+                    {{ formation }} · 11명 선발
+                {% else %}
+                    {{ formation }} · 구성 불가
+                {% endif %}
+            </div>
+
+        </div>
+
+
+        {% if not formation_available %}
+            <div class="sidebar-warning">
+                현재 구단은 이 포메이션을 구성할 선수 수가 부족합니다.
+            </div>
+        {% endif %}
+
+    </aside>
+
+
+    <main class="best11-main">
+
+
+
+{% if formation_available %}
+
+<div class="football-field formation-{{ formation }}">
+        <div class="field-result-title">
+            <span>
+                {% if selected_team %}
+                    {{ selected_team.team_name }} BEST11
+                {% else %}
+                    K리그 BEST11
+                {% endif %}
+            </span>
+
+            <strong>
+                {{ formation }}
+            </strong>
+        </div>
+
+
+        <div class="field-lines"></div>
+
+
+        <div class="center-line"></div>
+
+        <div class="center-circle"></div>
+
+
+        <!-- =================================================
+             FW
+        ================================================== -->
+
+        <div class="formation-line fw-line">
+
+            <div class="position-title">
+                FW
+            </div>
+
+            <div class="position-row">
+
+                {% for row in best11.FW %}
+
+                    <div class="player-card">
+
+                        <a
+                            href="#"
+                            class="player-popup-link"
+                            onclick="openPlayerModal({{ row.player.id }}); return false;"
+                        >
+
+                            <div class="player-photo">
+
+                                {% if row.player.photo %}
+
+                                    <img
+                                        src="{{ row.player.photo.url }}"
+                                        alt="{{ row.player.name }}"
+                                    >
+
+                                {% else %}
+
+                                    <div class="no-photo">
+                                        NO PHOTO
+                                    </div>
+
+                                {% endif %}
+
+                            </div>
+
+                            <div class="player-name">
+                                {{ row.player.name }}
+                            </div>
+
+                            <div class="team-name">
+
+                                {% if row.player.team.logo %}
+
+                                    <img
+                                        src="{{ row.player.team.logo.url }}"
+                                        alt="{{ row.player.team.team_name }}"
+                                        class="team-mini-logo"
+                                    >
+
+                                {% endif %}
+
+                                <span>
+                                    {{ row.player.team.team_name }}
+                                    ·
+                                    {{ row.player.position }}
+                                </span>
+
+                            </div>
+
+                            <div class="player-score">
+                                BEST11 {{ row.score }}점
+                            </div>
+
+                        </a>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             MF
+
+             4-2-3-1만 MF 5명을
+             공격형 3명 + 수비형 2명으로 나눠서 표시
+        ================================================== -->
+
+        <div class="formation-line mf-line">
+
+            <div class="position-title">
+                MF
+            </div>
+
+
+            {% if formation == '4-2-3-1' %}
+
+                <!-- 공격형 MF 3명 -->
+                <div class="mf-split-area">
+
+                    <div class="position-row row-3">
+
+                        {% for row in best11.MF|slice:":3" %}
+
+                            <div class="player-card">
+
+                                <a
+                                    href="#"
+                                    class="player-popup-link"
+                                    onclick="openPlayerModal({{ row.player.id }}); return false;"
+                                >
+
+                                    <div class="player-photo">
+
+                                        {% if row.player.photo %}
+
+                                            <img
+                                                src="{{ row.player.photo.url }}"
+                                                alt="{{ row.player.name }}"
+                                            >
+
+                                        {% else %}
+
+                                            <div class="no-photo">
+                                                NO PHOTO
+                                            </div>
+
+                                        {% endif %}
+
+                                    </div>
+
+                                    <div class="player-name">
+                                        {{ row.player.name }}
+                                    </div>
+
+                                    <div class="team-name">
+
+                                {% if row.player.team.logo %}
+
+                                    <img
+                                        src="{{ row.player.team.logo.url }}"
+                                        alt="{{ row.player.team.team_name }}"
+                                        class="team-mini-logo"
+                                    >
+
+                                {% endif %}
+
+                                <span>
+                                    {{ row.player.team.team_name }}
+                                    ·
+                                    {{ row.player.position }}
+                                </span>
+
+                            </div>
+
+                            <div class="player-score">
+                                BEST11 {{ row.score }}점
+                            </div>
+
+                                </a>
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <!-- 수비형 MF 2명 -->
+                    <div class="position-row row-2">
+
+                        {% for row in best11.MF|slice:"3:5" %}
+
+                            <div class="player-card">
+
+                                <a
+                                    href="#"
+                                    class="player-popup-link"
+                                    onclick="openPlayerModal({{ row.player.id }}); return false;"
+                                >
+
+                                    <div class="player-photo">
+
+                                        {% if row.player.photo %}
+
+                                            <img
+                                                src="{{ row.player.photo.url }}"
+                                                alt="{{ row.player.name }}"
+                                            >
+
+                                        {% else %}
+
+                                            <div class="no-photo">
+                                                NO PHOTO
+                                            </div>
+
+                                        {% endif %}
+
+                                    </div>
+
+                                    <div class="player-name">
+                                        {{ row.player.name }}
+                                    </div>
+
+                                    <div class="team-name">
+
+                                {% if row.player.team.logo %}
+
+                                    <img
+                                        src="{{ row.player.team.logo.url }}"
+                                        alt="{{ row.player.team.team_name }}"
+                                        class="team-mini-logo"
+                                    >
+
+                                {% endif %}
+
+                                <span>
+                                    {{ row.player.team.team_name }}
+                                    ·
+                                    {{ row.player.position }}
+                                </span>
+
+                            </div>
+
+                            <div class="player-score">
+                                BEST11 {{ row.score }}점
+                            </div>
+
+                                </a>
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+
+            {% else %}
+
+                <!-- 나머지 포메이션은 MF 한 줄 -->
+                <div class="position-row">
+
+                    {% for row in best11.MF %}
+
+                        <div class="player-card">
+
+                            <a
+                                href="#"
+                                class="player-popup-link"
+                                onclick="openPlayerModal({{ row.player.id }}); return false;"
+                            >
+
+                                <div class="player-photo">
+
+                                    {% if row.player.photo %}
+
+                                        <img
+                                            src="{{ row.player.photo.url }}"
+                                            alt="{{ row.player.name }}"
+                                        >
+
+                                    {% else %}
+
+                                        <div class="no-photo">
+                                            NO PHOTO
+                                        </div>
+
+                                    {% endif %}
+
+                                </div>
+
+                                <div class="player-name">
+                                    {{ row.player.name }}
+                                </div>
+
+                                <div class="team-name">
+
+                                {% if row.player.team.logo %}
+
+                                    <img
+                                        src="{{ row.player.team.logo.url }}"
+                                        alt="{{ row.player.team.team_name }}"
+                                        class="team-mini-logo"
+                                    >
+
+                                {% endif %}
+
+                                <span>
+                                    {{ row.player.team.team_name }}
+                                    ·
+                                    {{ row.player.position }}
+                                </span>
+
+                            </div>
+
+                            <div class="player-score">
+                                BEST11 {{ row.score }}점
+                            </div>
+
+                            </a>
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+
+        <!-- =================================================
+             DF
+        ================================================== -->
+
+        <div class="formation-line df-line">
+
+            <div class="position-title">
+                DF
+            </div>
+
+            <div class="position-row">
+
+                {% for row in best11.DF %}
+
+                    <div class="player-card">
+
+                        <a
+                            href="#"
+                            class="player-popup-link"
+                            onclick="openPlayerModal({{ row.player.id }}); return false;"
+                        >
+
+                            <div class="player-photo">
+
+                                {% if row.player.photo %}
+
+                                    <img
+                                        src="{{ row.player.photo.url }}"
+                                        alt="{{ row.player.name }}"
+                                    >
+
+                                {% else %}
+
+                                    <div class="no-photo">
+                                        NO PHOTO
+                                    </div>
+
+                                {% endif %}
+
+                            </div>
+
+                            <div class="player-name">
+                                {{ row.player.name }}
+                            </div>
+
+                            <div class="team-name">
+
+                                {% if row.player.team.logo %}
+
+                                    <img
+                                        src="{{ row.player.team.logo.url }}"
+                                        alt="{{ row.player.team.team_name }}"
+                                        class="team-mini-logo"
+                                    >
+
+                                {% endif %}
+
+                                <span>
+                                    {{ row.player.team.team_name }}
+                                    ·
+                                    {{ row.player.position }}
+                                </span>
+
+                            </div>
+
+                            <div class="player-score">
+                                BEST11 {{ row.score }}점
+                            </div>
+
+                        </a>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             GK
+        ================================================== -->
+
+        <div class="formation-line gk-line">
+
+            <div class="position-title">
+                GK
+            </div>
+
+            <div class="position-row">
+
+                {% for row in best11.GK %}
+
+                    <div class="player-card">
+
+                        <a
+                            href="#"
+                            class="player-popup-link"
+                            onclick="openPlayerModal({{ row.player.id }}); return false;"
+                        >
+
+                            <div class="player-photo">
+
+                                {% if row.player.photo %}
+
+                                    <img
+                                        src="{{ row.player.photo.url }}"
+                                        alt="{{ row.player.name }}"
+                                    >
+
+                                {% else %}
+
+                                    <div class="no-photo">
+                                        NO PHOTO
+                                    </div>
+
+                                {% endif %}
+
+                            </div>
+
+                            <div class="player-name">
+                                {{ row.player.name }}
+                            </div>
+
+                            <div class="team-name">
+
+                                {% if row.player.team.logo %}
+
+                                    <img
+                                        src="{{ row.player.team.logo.url }}"
+                                        alt="{{ row.player.team.team_name }}"
+                                        class="team-mini-logo"
+                                    >
+
+                                {% endif %}
+
+                                <span>
+                                    {{ row.player.team.team_name }}
+                                    ·
+                                    {{ row.player.position }}
+                                </span>
+
+                            </div>
+
+                            <div class="player-score">
+                                BEST11 {{ row.score }}점
+                            </div>
+
+                        </a>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+{% else %}
+
+<div class="football-field formation-unavailable">
+
+    <div class="field-lines"></div>
+
+    <div class="unavailable-box">
+
+        <div class="unavailable-icon">!</div>
+
+        <div class="unavailable-title">
+            {{ formation }} 포메이션 구성 불가
+        </div>
+
+        <div class="unavailable-team">
+            {% if selected_team %}
+                {{ selected_team.team_name }}
+            {% else %}
+                전체 K리그
+            {% endif %}
+        </div>
+
+        <div class="unavailable-message">
+            최소 출전시간 450분 기준으로<br>
+            필요한 포지션의 선수가 부족합니다.
+        </div>
+
+        <div class="unavailable-counts">
+            <span>GK {{ position_count.GK }}</span>
+            <span>DF {{ position_count.DF }}</span>
+            <span>MF {{ position_count.MF }}</span>
+            <span>FW {{ position_count.FW }}</span>
+        </div>
+
+        <div class="unavailable-guide">
+            다른 포메이션을 선택해주세요.
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+    </main>
+
+</div>
+
+
+    <!-- 축구장 끝 -->
+
+
+    <!-- =====================================================
+         포지션별 BEST11 RANKING
+         경기장/포메이션/선수팝업은 수정하지 않음
+    ====================================================== -->
+
+    <section class="ranking-area ranking-v2">
+
+        <div class="ranking-head">
+            <div>
+                <h2>포지션별 BEST11 RANKING</h2>
+                <p>최소 출전시간 600분 · BEST11 점수 기준</p>
+            </div>
+
+            <div class="ranking-tabs" role="tablist" aria-label="포지션별 랭킹">
+                <button type="button" class="ranking-tab active" data-position="FW">FW</button>
+                <button type="button" class="ranking-tab" data-position="MF">MF</button>
+                <button type="button" class="ranking-tab" data-position="DF">DF</button>
+                <button type="button" class="ranking-tab" data-position="GK">GK</button>
+            </div>
+        </div>
+
+
+        <!-- FW -->
+        <div class="ranking-panel active" id="ranking-FW">
+            <div class="ranking-panel-title">
+                <strong>FW TOP 10</strong>
+                <span>공격수 BEST11 순위</span>
+            </div>
+
+            <div class="ranking-podium">
+                {% for row in rankings.FW|slice:":3" %}
+                <button type="button"
+                        class="podium-card rank-{{ forloop.counter }}"
+                        onclick="openPlayerModal({{ row.player.id }})">
+                    <span class="podium-rank">{{ forloop.counter }}위</span>
+
+                    <span class="podium-photo">
+                        {% if row.player.photo %}
+                            <img src="{{ row.player.photo.url }}" alt="{{ row.player.name }}">
+                        {% else %}
+                            <span class="no-photo-small">NO<br>PHOTO</span>
+                        {% endif %}
+                    </span>
+
+                    <span class="podium-name">{{ row.player.name }}</span>
+                    <span class="podium-team">{{ row.player.team.team_name }} · FW</span>
+                    <span class="podium-score">BEST11 {{ row.score }}점</span>
+                    <span class="podium-minutes">{{ row.stats.minutes }}분</span>
+                </button>
+                {% endfor %}
+            </div>
+
+            <div class="ranking-list">
+                <div class="ranking-list-head">
+                    <span>순위</span><span>선수</span><span>구단</span><span>출전시간</span><span>BEST11</span>
+                </div>
+
+                {% for row in rankings.FW|slice:"3:10" %}
+                <button type="button"
+                        class="ranking-list-row"
+                        onclick="openPlayerModal({{ row.player.id }})">
+                    <span class="list-rank">{{ forloop.counter|add:"3" }}위</span>
+
+                    <span class="list-player">
+                        <span class="list-photo">
+                            {% if row.player.photo %}
+                                <img src="{{ row.player.photo.url }}" alt="{{ row.player.name }}">
+                            {% else %}
+                                <span class="no-photo-tiny">NO</span>
+                            {% endif %}
+                        </span>
+                        <strong>{{ row.player.name }}</strong>
+                    </span>
+
+                    <span>{{ row.player.team.team_name }}</span>
+                    <span>{{ row.stats.minutes }}분</span>
+                    <span class="list-score">{{ row.score }}점</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+
+        <!-- MF -->
+        <div class="ranking-panel" id="ranking-MF">
+            <div class="ranking-panel-title">
+                <strong>MF TOP 10</strong>
+                <span>미드필더 BEST11 순위</span>
+            </div>
+
+            <div class="ranking-podium">
+                {% for row in rankings.MF|slice:":3" %}
+                <button type="button"
+                        class="podium-card rank-{{ forloop.counter }}"
+                        onclick="openPlayerModal({{ row.player.id }})">
+                    <span class="podium-rank">{{ forloop.counter }}위</span>
+                    <span class="podium-photo">
+                        {% if row.player.photo %}
+                            <img src="{{ row.player.photo.url }}" alt="{{ row.player.name }}">
+                        {% else %}
+                            <span class="no-photo-small">NO<br>PHOTO</span>
+                        {% endif %}
+                    </span>
+                    <span class="podium-name">{{ row.player.name }}</span>
+                    <span class="podium-team">{{ row.player.team.team_name }} · MF</span>
+                    <span class="podium-score">BEST11 {{ row.score }}점</span>
+                    <span class="podium-minutes">{{ row.stats.minutes }}분</span>
+                </button>
+                {% endfor %}
+            </div>
+
+            <div class="ranking-list">
+                <div class="ranking-list-head">
+                    <span>순위</span><span>선수</span><span>구단</span><span>출전시간</span><span>BEST11</span>
+                </div>
+
+                {% for row in rankings.MF|slice:"3:10" %}
+                <button type="button" class="ranking-list-row"
+                        onclick="openPlayerModal({{ row.player.id }})">
+                    <span class="list-rank">{{ forloop.counter|add:"3" }}위</span>
+                    <span class="list-player">
+                        <span class="list-photo">
+                            {% if row.player.photo %}
+                                <img src="{{ row.player.photo.url }}" alt="{{ row.player.name }}">
+                            {% else %}
+                                <span class="no-photo-tiny">NO</span>
+                            {% endif %}
+                        </span>
+                        <strong>{{ row.player.name }}</strong>
+                    </span>
+                    <span>{{ row.player.team.team_name }}</span>
+                    <span>{{ row.stats.minutes }}분</span>
+                    <span class="list-score">{{ row.score }}점</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+
+        <!-- DF -->
+        <div class="ranking-panel" id="ranking-DF">
+            <div class="ranking-panel-title">
+                <strong>DF TOP 10</strong>
+                <span>수비수 BEST11 순위</span>
+            </div>
+
+            <div class="ranking-podium">
+                {% for row in rankings.DF|slice:":3" %}
+                <button type="button"
+                        class="podium-card rank-{{ forloop.counter }}"
+                        onclick="openPlayerModal({{ row.player.id }})">
+                    <span class="podium-rank">{{ forloop.counter }}위</span>
+                    <span class="podium-photo">
+                        {% if row.player.photo %}
+                            <img src="{{ row.player.photo.url }}" alt="{{ row.player.name }}">
+                        {% else %}
+                            <span class="no-photo-small">NO<br>PHOTO</span>
+                        {% endif %}
+                    </span>
+                    <span class="podium-name">{{ row.player.name }}</span>
+                    <span class="podium-team">{{ row.player.team.team_name }} · DF</span>
+                    <span class="podium-score">BEST11 {{ row.score }}점</span>
+                    <span class="podium-minutes">{{ row.stats.minutes }}분</span>
+                </button>
+                {% endfor %}
+            </div>
+
+            <div class="ranking-list">
+                <div class="ranking-list-head">
+                    <span>순위</span><span>선수</span><span>구단</span><span>출전시간</span><span>BEST11</span>
+                </div>
+
+                {% for row in rankings.DF|slice:"3:10" %}
+                <button type="button" class="ranking-list-row"
+                        onclick="openPlayerModal({{ row.player.id }})">
+                    <span class="list-rank">{{ forloop.counter|add:"3" }}위</span>
+                    <span class="list-player">
+                        <span class="list-photo">
+                            {% if row.player.photo %}
+                                <img src="{{ row.player.photo.url }}" alt="{{ row.player.name }}">
+                            {% else %}
+                                <span class="no-photo-tiny">NO</span>
+                            {% endif %}
+                        </span>
+                        <strong>{{ row.player.name }}</strong>
+                    </span>
+                    <span>{{ row.player.team.team_name }}</span>
+                    <span>{{ row.stats.minutes }}분</span>
+                    <span class="list-score">{{ row.score }}점</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+
+        <!-- GK -->
+        <div class="ranking-panel" id="ranking-GK">
+            <div class="ranking-panel-title">
+                <strong>GK TOP 10</strong>
+                <span>골키퍼 BEST11 순위</span>
+            </div>
+
+            <div class="ranking-podium">
+                {% for row in rankings.GK|slice:":3" %}
+                <button type="button"
+                        class="podium-card rank-{{ forloop.counter }}"
+                        onclick="openPlayerModal({{ row.player.id }})">
+                    <span class="podium-rank">{{ forloop.counter }}위</span>
+                    <span class="podium-photo">
+                        {% if row.player.photo %}
+                            <img src="{{ row.player.photo.url }}" alt="{{ row.player.name }}">
+                        {% else %}
+                            <span class="no-photo-small">NO<br>PHOTO</span>
+                        {% endif %}
+                    </span>
+                    <span class="podium-name">{{ row.player.name }}</span>
+                    <span class="podium-team">{{ row.player.team.team_name }} · GK</span>
+                    <span class="podium-score">BEST11 {{ row.score }}점</span>
+                    <span class="podium-minutes">{{ row.stats.minutes }}분</span>
+                </button>
+                {% endfor %}
+            </div>
+
+            <div class="ranking-list">
+                <div class="ranking-list-head">
+                    <span>순위</span><span>선수</span><span>구단</span><span>출전시간</span><span>BEST11</span>
+                </div>
+
+                {% for row in rankings.GK|slice:"3:10" %}
+                <button type="button" class="ranking-list-row"
+                        onclick="openPlayerModal({{ row.player.id }})">
+                    <span class="list-rank">{{ forloop.counter|add:"3" }}위</span>
+                    <span class="list-player">
+                        <span class="list-photo">
+                            {% if row.player.photo %}
+                                <img src="{{ row.player.photo.url }}" alt="{{ row.player.name }}">
+                            {% else %}
+                                <span class="no-photo-tiny">NO</span>
+                            {% endif %}
+                        </span>
+                        <strong>{{ row.player.name }}</strong>
+                    </span>
+                    <span>{{ row.player.team.team_name }}</span>
+                    <span>{{ row.stats.minutes }}분</span>
+                    <span class="list-score">{{ row.score }}점</span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+    </section>
+    <!-- TOP10 끝 -->
+
+
+</div>
+<!-- container 끝 -->
+
+
+
+<!-- =========================================================
+     선수 상세 팝업
+========================================================== -->
+
+<div
+    id="playerModal"
+    class="player-modal"
+>
+
+
+    <div class="player-modal-content">
+
+
+        <!-- 닫기 -->
+
+        <button
+            type="button"
+            class="modal-close"
+            onclick="closePlayerModal()"
+        >
+            ×
+        </button>
+
+
+
+        <!-- =================================================
+             선수 기본정보
+        ================================================== -->
+
+        <div class="modal-player-header">
+
+
+            <div class="modal-player-photo">
+
+
+                <img
+                    id="modalPlayerPhoto"
+                    src=""
+                    alt="선수사진"
+                >
+
+
+                <div
+                    id="modalNoPhoto"
+                    class="modal-player-no-photo"
+                >
+                    NO PHOTO
+                </div>
+
+
+            </div>
+
+
+
+            <div>
+
+
+                <div
+                    id="modalPlayerName"
+                    class="modal-player-name"
+                >
+                    선수명
+                </div>
+
+
+                <div
+                    id="modalPlayerTeam"
+                    class="modal-player-team"
+                >
+                </div>
+
+
+                <div
+                    id="modalBest11Score"
+                    class="modal-best11-score"
+                >
+                </div>
+
+
+            </div>
+
+
+        </div>
+
+
+
+        <!-- =================================================
+             기본 기록
+        ================================================== -->
+
+        <div class="modal-stats">
+
+
+            <div class="modal-stat-box">
+
+                <div class="modal-stat-title">
+                    경기
+                </div>
+
+                <div
+                    id="modalGames"
+                    class="modal-stat-value"
+                >
+                    0
+                </div>
+
+            </div>
+
+
+
+            <div class="modal-stat-box">
+
+                <div class="modal-stat-title">
+                    출전시간
+                </div>
+
+                <div
+                    id="modalMinutes"
+                    class="modal-stat-value"
+                >
+                    0
+                </div>
+
+            </div>
+
+
+
+            <div class="modal-stat-box">
+
+                <div class="modal-stat-title">
+                    득점
+                </div>
+
+                <div
+                    id="modalGoals"
+                    class="modal-stat-value"
+                >
+                    0
+                </div>
+
+            </div>
+
+
+
+            <div class="modal-stat-box">
+
+                <div class="modal-stat-title">
+                    도움
+                </div>
+
+                <div
+                    id="modalAssists"
+                    class="modal-stat-value"
+                >
+                    0
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+
+        <!-- =================================================
+             육각형
+        ================================================== -->
+
+        <div class="radar-section">
+
+
+            <h3>
+                선수 능력 비교
+            </h3>
+
+
+            <div class="radar-description">
+                같은 포지션 선수 기준 · 백분위 점수
+            </div>
+
+
+            <div class="radar-area">
+
+                <canvas id="playerRadarChart"></canvas>
+
+            </div>
+
+
+        </div>
+
+
+
+        <!-- =================================================
+             90분당 기록
+        ================================================== -->
+
+        <div class="per90-area">
+
+
+            <h3>
+                90분당 주요 기록
+            </h3>
+
+
+            <div class="per90-grid">
+
+
+                <div class="per90-box">
+                    득점
+                    <br>
+                    <strong id="per90Goals">0</strong>
+                </div>
+
+
+                <div class="per90-box">
+                    도움
+                    <br>
+                    <strong id="per90Assists">0</strong>
+                </div>
+
+
+                <div class="per90-box">
+                    슈팅
+                    <br>
+                    <strong id="per90Shots">0</strong>
+                </div>
+
+
+                <div class="per90-box">
+                    유효슈팅
+                    <br>
+                    <strong id="per90ShotsTarget">0</strong>
+                </div>
+
+
+                <div class="per90-box">
+                    키패스
+                    <br>
+                    <strong id="per90KeyPasses">0</strong>
+                </div>
+
+
+                <div class="per90-box">
+                    패스성공률
+                    <br>
+                    <strong id="per90PassRate">0</strong>%
+                </div>
+
+
+                <div class="per90-box">
+                    드리블
+                    <br>
+                    <strong id="per90Dribble">0</strong>
+                </div>
+
+
+                <div class="per90-box">
+                    인터셉트
+                    <br>
+                    <strong id="per90Interceptions">0</strong>
+                </div>
+
+
+                <div class="per90-box">
+                    클리어링
+                    <br>
+                    <strong id="per90Clearances">0</strong>
+                </div>
+
+
+                <div class="per90-box">
+                    획득
+                    <br>
+                    <strong id="per90Recoveries">0</strong>
+                </div>
+
+
+            </div>
+
+
+        </div>
+
+
+    </div>
+
+
+</div>
+
+
+
+<!-- =========================================================
+     JavaScript
+========================================================== -->
+
+<script src="{% static 'player/readable/best11_inline_2.js' %}"></script>
+
+
+
+
+<script src="{% static 'player/readable/best11_inline_3.js' %}"></script>
+    {% include 'player/lab_panel.html' %}
+</body>
+
+</html>

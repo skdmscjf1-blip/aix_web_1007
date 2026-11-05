@@ -1,0 +1,8 @@
+{
+  "source_commit": "82f2862",
+  "result_sha256": "38c0cb429b11b03e859c80dc2e27af2c2d7d4161225cf87c1f7a4f044c8c8065",
+  "formation_cases": 112,
+  "radar_records": 429,
+  "gps_matches": 20,
+  "edge_cases": 86
+}
