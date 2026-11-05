@@ -1,0 +1,121 @@
+/* 공부 지도: learning/files/team/static/team/readable/predict_match_inline_1.css.md
+ * 색상·간격·배치만 담당합니다. 선택자와 규칙 순서는 유지합니다. */
+
+body {
+  margin: 0;
+  background: #f4f6f5;
+  color: #18382a;
+  font-family: sans-serif;
+}
+
+main {
+  max-width: 980px;
+  margin: 32px auto;
+  padding: 0 16px;
+}
+
+section,
+        form {
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  margin: 20px 0;
+}
+
+p,
+        li {
+  line-height: 1.7;
+}
+
+a {
+  color: #08743e;
+}
+
+form .fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: end;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+select,
+        input,
+        button {
+  border-radius: 8px;
+  border: 1px solid #b8c9c0;
+  padding: 12px;
+  font: inherit;
+}
+
+button {
+  background: #08743e;
+  color: white;
+  cursor: pointer;
+}
+
+.errorlist {
+  color: #a52920;
+}
+
+.notice {
+  background: #fff5da;
+  padding: 16px;
+  border-radius: 10px;
+}
+
+.muted {
+  color: #52645b;
+}
+
+.probability {
+  margin: 20px 0;
+}
+
+.probability strong {
+  display: inline-block;
+  min-width: 120px;
+}
+
+.track {
+  height: 18px;
+  background: #e9efeb;
+  border-radius: 9px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.bar {
+  height: 100%;
+  background: #078244;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+        td {
+  padding: 12px;
+  border-bottom: 1px solid #dfe7e2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  background: #edf5ef;
+}
+
+h2 {
+  font-size: 22px;
+}
